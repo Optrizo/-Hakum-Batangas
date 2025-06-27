@@ -41,9 +41,23 @@ const CustomerView: React.FC = () => {
     today.setHours(0, 0, 0, 0);
     const combined = [...cars, ...motorcycles];
     return combined
-      .filter(v => ['waiting', 'in-progress', 'payment-pending'].includes(v.status) && new Date(v.created_at) >= today)
+      .filter(v => {
+        const isMotorcycle = 'vehicle_type' in v && v.vehicle_type === 'motorcycle';
+        const hasPackage = isMotorcycle
+          ? !!v.package
+          : packages.some(p => p.name === (v as Car).service);
+        const isActiveStatus = ['waiting', 'in-progress', 'payment-pending'].includes(v.status);
+        if (!isActiveStatus) return false;
+        if (hasPackage) {
+          // Show package vehicles until completed/cancelled
+          return v.status !== 'completed' && v.status !== 'cancelled';
+        } else {
+          // Non-package vehicles: only show if created today
+          return new Date(v.created_at) >= today;
+        }
+      })
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-  }, [cars, motorcycles]);
+  }, [cars, motorcycles, packages]);
 
   const columns = useMemo(() => [
     { title: 'WAITING', vehicles: activeVehicles.filter(v => v.status === 'waiting'), color: '#3b82f6' },

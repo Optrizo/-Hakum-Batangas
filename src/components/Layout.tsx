@@ -23,7 +23,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { to: '/', label: 'Queue' },
     { to: '/customer', label: 'Customer View' },
     { to: '/crew', label: 'Crew' },
-    { to: '/services', label: 'Services' },
+    { to: '/services', label: 'Car Services' },
     { to: '/motorcycle-services', label: 'Motorcycle Services' },
     { to: '/motorcycle-packages', label: 'Motorcycle Packages' },
   ];
