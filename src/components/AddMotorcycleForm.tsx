@@ -91,7 +91,8 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   // Search motorcycle history when plate changes
   useEffect(() => {
     const searchHistory = async () => {
-      if (formData.plate.length >= 3) {
+      const platePattern = /^[0-9]{3}-[A-Z]{3}$/;
+      if (platePattern.test(formData.plate)) {
         setIsSearchingHistory(true);
         try {
           const history = await searchMotorcycleHistory(formData.plate);
