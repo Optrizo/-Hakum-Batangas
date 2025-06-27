@@ -16,16 +16,32 @@ const CrewManager: React.FC = () => {
     setFormData(data);
   };
 
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow letters and spaces
+    const value = e.target.value.replace(/[^A-Za-z\s]/g, '');
+    setFormDataPersist({ ...formData, name: value });
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow digits, max 11
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 11) value = value.slice(0, 11);
+    setFormDataPersist({ ...formData, phone: value });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
+    } else if (!/^[A-Za-z\s]+$/.test(formData.name.trim())) {
+      newErrors.name = 'Name must only contain letters and spaces';
     }
-    
-    if (formData.phone && !/^(\+63|0)[\d\s]{10,12}$/.test(formData.phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Please enter a valid Philippine phone number';
+    if (formData.phone) {
+      if (!/^\d{11}$/.test(formData.phone)) {
+        newErrors.phone = 'Phone number must be exactly 11 digits';
+      }
     }
 
     setErrors(newErrors);
@@ -97,7 +113,7 @@ const CrewManager: React.FC = () => {
               type="text"
               id="name"
               value={formData.name}
-              onChange={(e) => setFormDataPersist({ ...formData, name: e.target.value })}
+              onChange={handleNameChange}
               className={`block w-full rounded-lg bg-background-light dark:bg-background-dark border shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2.5 sm:p-2 transition-all duration-200 ${
                 errors.name ? 'border-red-300 dark:border-red-600 focus:border-red-500 focus:ring-red-500' : 'border-border-light dark:border-border-dark'
               }`}
@@ -122,11 +138,12 @@ const CrewManager: React.FC = () => {
               type="tel"
               id="phone"
               value={formData.phone}
-              onChange={(e) => setFormDataPersist({ ...formData, phone: e.target.value })}
+              onChange={handlePhoneChange}
+              maxLength={11}
               className={`block w-full rounded-lg bg-background-light dark:bg-background-dark border shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2.5 sm:p-2 transition-all duration-200 ${
                 errors.phone ? 'border-red-300 dark:border-red-600 focus:border-red-500 focus:ring-red-500' : 'border-border-light dark:border-border-dark'
               }`}
-              placeholder="e.g., 0912 345 6789"
+              placeholder="e.g., 09123456789"
             />
             {errors.phone && (
               <p className="mt-1 text-sm text-red-500 flex items-start">

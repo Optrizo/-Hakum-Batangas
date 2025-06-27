@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueue } from '../context/QueueContext';
-import { CAR_SIZES, Service, ServicePackage, SizePricing, CarSize, ServiceStatus } from '../types';
+import { CAR_SIZES, CarSize, ServiceStatus, SizePricing } from '../types';
 
 interface AddCarFormProps {
   onComplete: () => void;
@@ -31,6 +31,9 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
   const [manualTotalCost, setManualTotalCost] = useState<number | ''>('');
   const [isSearchingHistory, setIsSearchingHistory] = useState(false);
   const [autoFilledFromHistory, setAutoFilledFromHistory] = useState(false);
+  const formTopRef = useRef<HTMLDivElement>(null);
+
+  const hasPackageSelected = useMemo(() => formData.selectedPackages.length > 0, [formData.selectedPackages]);
 
   const busyCrewIds = useMemo(() => {
     const today = new Date();
@@ -162,11 +165,6 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       }
     }
 
-    // Crew validation
-    if (formData.status === 'in-progress' && formData.crew.length === 0) {
-      newErrors.crew = 'Assign at least one crew member for cars starting "In Progress".';
-    }
-
     // Services validation
     if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
       newErrors.services = 'Please select at least one service or package to add the vehicle to the queue';
@@ -191,6 +189,10 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       newErrors.status = 'Please select a valid status';
     }
 
+    if (formData.status === 'in-progress' && formData.crew.length === 0 && !hasPackageSelected) {
+      newErrors.crew = 'Assign at least one crew member for cars starting "In Progress".';
+    }
+
     setErrors(newErrors);
     setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the errors below and try again.' : null);
     return Object.keys(newErrors).length === 0;
@@ -202,8 +204,8 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
 
     if (name === 'plate') {
       const cleanValue = value.replace(/[-\s]/g, '').toUpperCase();
-      let letters = cleanValue.slice(0, 3).replace(/[^A-Z]/g, '');
-      let numbers = cleanValue.slice(3, 7).replace(/[^0-9]/g, '');
+      const letters = cleanValue.slice(0, 3).replace(/[^A-Z]/g, '');
+      const numbers = cleanValue.slice(3, 7).replace(/[^0-9]/g, '');
       
       if (cleanValue.length > 3) {
         formattedValue = `${letters}-${numbers}`;
@@ -239,11 +241,15 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
   };
 
   const handlePackageToggle = (packageId: string) => {
+    const newSelectedPackages = formData.selectedPackages.includes(packageId)
+      ? formData.selectedPackages.filter(id => id !== packageId)
+      : [...formData.selectedPackages, packageId];
+
     setFormData(prev => ({
       ...prev,
-      selectedPackages: prev.selectedPackages.includes(packageId)
-        ? prev.selectedPackages.filter(id => id !== packageId)
-        : [...prev.selectedPackages, packageId]
+      selectedPackages: newSelectedPackages,
+      // If a package is now selected, clear the crew. Otherwise, keep existing crew.
+      crew: newSelectedPackages.length > 0 ? [] : prev.crew,
     }));
   };
 
@@ -266,6 +272,9 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
     }
     
     if (!validate()) {
+      if (formTopRef.current) {
+        formTopRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
       return;
     }
     
@@ -608,46 +617,48 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
               </p>
             </div>
 
-            {/* Assign Crew */}
-            <div className="p-4 rounded-lg border border-border-light dark:border-border-dark bg-background-light dark:bg-gray-900/50">
-              <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsCrewOpen(!isCrewOpen)}>
-                <span className="font-medium text-text-primary-light dark:text-text-primary-dark">
-                  Assign Crew <span className="text-gray-500 text-xs">(Optional)</span>
-                </span>
-                <svg className={`w-5 h-5 transition-transform ${isCrewOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-              </div>
-              {isCrewOpen && (
-                <div className="mt-2 space-y-2 max-h-40 overflow-y-auto pr-2">
-                  {crews.map((crewMember) => {
-                    const isBusy = busyCrewIds.has(crewMember.id);
-                    return (
-                      <label 
-                        key={crewMember.id}
-                        className={`flex items-center justify-between p-2 rounded-md transition-colors ${
-                          isBusy
-                            ? 'cursor-not-allowed bg-gray-100 dark:bg-gray-800 opacity-50'
-                            : 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700'
-                        }`}
-                      >
-                        <div className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={formData.crew.includes(crewMember.id)}
-                            onChange={() => handleCrewToggle(crewMember.id)}
-                            disabled={isBusy}
-                            className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-brand-blue focus:ring-brand-blue"
-                          />
-                          <span className="ml-3 text-sm text-text-primary-light dark:text-text-primary-dark">{crewMember.name}</span>
-                        </div>
-                        {isBusy && (
-                          <span className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/50 px-2 py-1 rounded-full">Busy</span>
-                        )}
-                      </label>
-                    );
-                  })}
+            {/* Assign Crew - Hide if a package is selected */}
+            {!hasPackageSelected && (
+              <div className="p-4 rounded-lg border border-border-light dark:border-border-dark bg-background-light dark:bg-gray-900/50">
+                <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsCrewOpen(!isCrewOpen)}>
+                  <span className="font-medium text-text-primary-light dark:text-text-primary-dark">
+                    Assign Crew <span className="text-gray-500 text-xs">(Optional)</span>
+                  </span>
+                  <svg className={`w-5 h-5 transition-transform ${isCrewOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
-              )}
-            </div>
+                {isCrewOpen && (
+                  <div className="mt-2 space-y-2 max-h-40 overflow-y-auto pr-2">
+                    {crews.map((crewMember) => {
+                      const isBusy = busyCrewIds.has(crewMember.id);
+                      return (
+                        <label 
+                          key={crewMember.id}
+                          className={`flex items-center justify-between p-2 rounded-md transition-colors ${
+                            isBusy
+                              ? 'cursor-not-allowed bg-gray-100 dark:bg-gray-800 opacity-50'
+                              : 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.crew.includes(crewMember.id)}
+                              onChange={() => handleCrewToggle(crewMember.id)}
+                              disabled={isBusy}
+                              className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-brand-blue focus:ring-brand-blue"
+                            />
+                            <span className="ml-3 text-sm text-text-primary-light dark:text-text-primary-dark">{crewMember.name}</span>
+                          </div>
+                          {isBusy && (
+                            <span className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/50 px-2 py-1 rounded-full">Busy</span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
      
 

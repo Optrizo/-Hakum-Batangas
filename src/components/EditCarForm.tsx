@@ -1,6 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueue } from '../context/QueueContext';
 import { Car, CAR_SIZES, SERVICE_STATUSES, SizePricing } from '../types';
+import { 
+  validateLicensePlate,
+  validateCarModel,
+  validatePhoneNumber,
+  validateCost,
+  validateCarSize,
+  validateServiceStatus
+} from '../lib/validation';
 
 interface EditCarFormProps {
   car: Car;
@@ -41,6 +49,10 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
   const initialSelectedServices = initialServices.filter(id => serviceIds.has(id));
   const initialSelectedPackages = initialServices.filter(id => packageIds.has(id));
 
+  // Filter car services and packages
+  const carServices = services.filter(s => !s.vehicle_type || s.vehicle_type === 'car');
+  const carPackages = packages.filter(p => !p.vehicle_type || p.vehicle_type === 'car');
+
   const [formData, setFormData] = useState({
     plate: car.plate,
     model: car.model,
@@ -63,25 +75,28 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
   const [calculatedCost, setCalculatedCost] = useState(0);
   const [isCostOverridden, setIsCostOverridden] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const formTopRef = useRef<HTMLDivElement>(null);
+
+  const hasPackageSelected = useMemo(() => formData.selectedPackages.length > 0, [formData.selectedPackages]);
 
   useEffect(() => {
     // Initialize service prices based on car size
     const prices: Record<string, number> = {};
-    services.forEach(service => {
+    carServices.forEach(service => {
       const pricing = service.pricing as SizePricing;
       prices[service.id] = pricing?.[formData.size as keyof SizePricing] || service.price;
     });
     setServicePrices(prices);
-  }, [services, formData.size]);
+  }, [carServices, formData.size]);
 
   useEffect(() => {
     // Initialize package prices based on car size
     const prices: Record<string, number> = {};
-    packages.forEach(pkg => {
+    carPackages.forEach(pkg => {
       prices[pkg.id] = pkg.pricing[formData.size as keyof SizePricing] || 0;
     });
     setPackagePrices(prices);
-  }, [packages, formData.size]);
+  }, [carPackages, formData.size]);
 
   useEffect(() => {
     const serviceTotal = formData.selectedServices.reduce((sum, serviceId) => {
@@ -103,33 +118,46 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.plate.trim()) {
-      newErrors.plate = 'License plate is required to identify the vehicle';
-    } else if (!/^[A-Z]{2,3}[\s-]?\d{3,4}$/.test(formData.plate.toUpperCase())) {
-      newErrors.plate = 'Please enter a valid Philippine license plate format (e.g., ABC-1234 or ABC1234)';
-      console.log('Plate validation failed for:', formData.plate.toUpperCase());
-    }
-    
-    if (!formData.model.trim()) {
-      newErrors.model = 'Car model is required to identify the vehicle type';
-    } else if (formData.model.trim().length < 2) {
-      newErrors.model = 'Car model must be at least 2 characters long';
-    }
-
-    if (formData.phone.trim()) {
-      const phoneRegex = /^(\+63|0)[\d\s]{10,12}$/;
-      if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
-        newErrors.phone = 'Please enter a valid Philippine phone number starting with 09 or +639 followed by 9 digits';
+    const plateResult = validateLicensePlate(formData.plate);
+    if (!plateResult.isValid) newErrors.plate = plateResult.error!;
+    else {
+      // Check for duplicate plate in active queue, excluding the current car
+      const trimmedPlate = formData.plate.trim().toUpperCase();
+      const isDuplicate = cars.some(
+        c => c.id !== car.id &&
+             c.plate.trim().toUpperCase() === trimmedPlate && 
+             (c.status === 'waiting' || c.status === 'in-progress')
+      );
+      if (isDuplicate) {
+        newErrors.plate = 'This license plate is already in the active queue for another vehicle.';
       }
     }
+
+    const modelResult = validateCarModel(formData.model);
+    if (!modelResult.isValid) newErrors.model = modelResult.error!;
     
-    if (Object.keys(newErrors).length > 0) {
-      setFormError('Please fix the errors below and try again.');
-      console.error('Validation failed:', newErrors);
-    } else {
-      setFormError(null);
+    const phoneResult = validatePhoneNumber(formData.phone);
+    if (!phoneResult.isValid) newErrors.phone = phoneResult.error!;
+
+    const sizeResult = validateCarSize(formData.size);
+    if (!sizeResult.isValid) newErrors.size = sizeResult.error!;
+
+    const statusResult = validateServiceStatus(formData.status);
+    if (!statusResult.isValid) newErrors.status = statusResult.error!;
+
+    const costResult = validateCost(formData.total_cost);
+    if (!costResult.isValid) newErrors.total_cost = costResult.error!;
+
+    if (formData.status === 'in-progress' && formData.crew.length === 0 && !hasPackageSelected) {
+      newErrors.crew = 'Assign at least one crew member for cars "In Progress".';
     }
+
+    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
+      newErrors.services = 'Please select at least one service or package.';
+    }
+
     setErrors(newErrors);
+    setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the errors below.' : null);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -154,30 +182,84 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
     setFormData(prev => ({ ...prev, [name]: formattedValue }));
     
     if (errors[name]) {
+      validateField(name, formattedValue);
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    validateField(name, value);
+  };
+  
+  const validateField = (name: string, value: any) => {
+    let result;
+    switch (name) {
+      case 'plate':
+        result = validateLicensePlate(value);
+        break;
+      case 'model':
+        result = validateCarModel(value);
+        break;
+      case 'phone':
+        result = validatePhoneNumber(value);
+        break;
+      case 'size':
+        result = validateCarSize(value);
+        break;
+      case 'status':
+        result = validateServiceStatus(value);
+        break;
+      case 'total_cost':
+        result = validateCost(formData.total_cost);
+        break;
+      default:
+        return;
+    }
+
+    if (!result.isValid) {
+      setErrors(prev => ({ ...prev, [name]: result.error! }));
+    } else {
       setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
+        const { [name]: _, ...rest } = prev;
+        return rest;
       });
     }
   };
 
   const handleServiceToggle = (serviceId: string) => {
+    const newSelectedServices = formData.selectedServices.includes(serviceId)
+      ? formData.selectedServices.filter(id => id !== serviceId)
+      : [...formData.selectedServices, serviceId];
+      
     setFormData(prev => ({
       ...prev,
-      selectedServices: prev.selectedServices.includes(serviceId)
-        ? prev.selectedServices.filter(id => id !== serviceId)
-        : [...prev.selectedServices, serviceId]
+      selectedServices: newSelectedServices
     }));
+    validateServicesAndPackages(newSelectedServices, formData.selectedPackages);
   };
 
   const handlePackageToggle = (packageId: string) => {
+    const newSelectedPackages = formData.selectedPackages.includes(packageId)
+      ? formData.selectedPackages.filter(id => id !== packageId)
+      : [...formData.selectedPackages, packageId];
+
     setFormData(prev => ({
       ...prev,
-      selectedPackages: prev.selectedPackages.includes(packageId)
-        ? prev.selectedPackages.filter(id => id !== packageId)
-        : [...prev.selectedPackages, packageId]
+      selectedPackages: newSelectedPackages,
+      crew: newSelectedPackages.length > 0 ? [] : prev.crew,
     }));
+    validateServicesAndPackages(formData.selectedServices, newSelectedPackages);
+  };
+  
+  const validateServicesAndPackages = (services: string[], packages: string[]) => {
+    if (services.length === 0 && packages.length === 0) {
+      setErrors(prev => ({ ...prev, services: 'Please select at least one service or package.' }));
+    } else {
+      setErrors(prev => {
+        const { services: _, ...rest } = prev;
+        return rest;
+      });
+    }
   };
 
   const handleCrewToggle = (crewId: string) => {
@@ -191,53 +273,59 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError(null);
     if (!validate()) {
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth' });
       return;
     }
     
-        setIsSubmitting(true);
+    setIsSubmitting(true);
     try {
       const allSelectedServiceIds = [...formData.selectedServices, ...formData.selectedPackages];
-      const selectedServices = services.filter(s => formData.selectedServices.includes(s.id));
-      const selectedPackages = packages.filter(p => formData.selectedPackages.includes(p.id));
+      const selectedServices = carServices.filter(s => formData.selectedServices.includes(s.id));
+      const selectedPackages = carPackages.filter(p => formData.selectedPackages.includes(p.id));
+      const selectedServiceNames = formData.selectedServices.map(id => {
+        const service = carServices.find(s => s.id === id);
+        return service?.name || '';
+      }).filter(name => name.length > 0);
+      const selectedPackageNames = formData.selectedPackages.map(id => {
+        const pkg = carPackages.find(p => p.id === id);
+        return pkg?.name || '';
+      }).filter(name => name.length > 0);
       const allServiceNames = [
-        ...selectedServices.map(s => s.name),
-        ...selectedPackages.map(p => p.name)
+        ...selectedServiceNames,
+        ...selectedPackageNames
       ];
-        await updateCar(car.id, {
-          plate: formData.plate,
-          model: formData.model,
-          size: formData.size,
-          status: formData.status,
+      await updateCar(car.id, {
+        plate: formData.plate,
+        model: formData.model,
+        size: formData.size,
+        status: formData.status,
         phone: formData.phone.trim() ? formData.phone : '',
-          crew: formData.crew,
-          service: allServiceNames.join(', '),
+        crew: formData.crew,
+        service: allServiceNames.join(', '),
         services: allSelectedServiceIds,
-          total_cost: formData.total_cost,
-        });
-        onComplete();
-      } catch (error) {
+        total_cost: formData.total_cost,
+      });
+      onComplete();
+    } catch (error) {
       setFormError(error instanceof Error ? error.message : 'An unknown error occurred. Please try again.');
-        console.error('Error updating car:', error);
-      } finally {
-        setIsSubmitting(false);
+      console.error('Error updating car:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div ref={formTopRef} />
       {formError && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg mb-4">
-          <div className="flex items-start">
-            <svg className="w-5 h-5 text-red-400 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-            <div>
-              <p className="font-semibold">Please fix the following errors:</p>
-              <p className="text-sm mt-1">{formError}</p>
-            </div>
-          </div>
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          <strong className="block mb-1">{formError}</strong>
+          <ul className="list-disc pl-5">
+            {Object.entries(errors).map(([field, error]) => (
+              <li key={field}>{error}</li>
+            ))}
+          </ul>
         </div>
       )}
       
@@ -259,6 +347,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
             name="plate"
             value={formData.plate}
             onChange={handleChange}
+            onBlur={handleBlur}
             className={`block w-full rounded-md bg-background-light dark:bg-background-dark border shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2 uppercase ${
               errors.plate 
                 ? 'border-red-300 dark:border-red-600 focus:border-red-500 focus:ring-red-500' 
@@ -293,6 +382,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
             name="model"
             value={formData.model}
             onChange={handleChange}
+            onBlur={handleBlur}
             className={`block w-full rounded-md bg-background-light dark:bg-background-dark border shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2 ${
               errors.model 
                 ? 'border-red-300 dark:border-red-600 focus:border-red-500 focus:ring-red-500' 
@@ -326,6 +416,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
             name="phone"
             value={formData.phone || ''}
             onChange={handleChange}
+            onBlur={handleBlur}
             className={`block w-full rounded-md bg-background-light dark:bg-background-dark border shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2 ${
               errors.phone 
                 ? 'border-red-300 dark:border-red-600 focus:border-red-500 focus:ring-red-500' 
@@ -357,6 +448,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
             name="size"
             value={formData.size}
             onChange={handleChange}
+            onBlur={handleBlur}
             className="block w-full rounded-md bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2"
             disabled={isSubmitting}
             required
@@ -379,6 +471,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
             name="status"
             value={formData.status}
             onChange={handleChange}
+            onBlur={handleBlur}
             className="block w-full rounded-md bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2"
             disabled={isSubmitting}
             required
@@ -413,7 +506,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
             Services
           </label>
             <div className="max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-2 border border-border-light dark:border-border-dark">
-              {services.map(service => (
+              {carServices.map(service => (
                 <label key={service.id} className="flex items-center justify-between cursor-pointer p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800">
                   <div>
                           <input
@@ -435,7 +528,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
               Packages
           </label>
             <div className="max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-2 border border-border-light dark:border-border-dark">
-              {packages.map(pkg => (
+              {carPackages.map(pkg => (
                  <label key={pkg.id} className="flex items-center justify-between cursor-pointer p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800">
                    <div>
                           <input
@@ -454,62 +547,53 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
           </div>
         </div>
 
-      {/* Crew Selection */}
-      <div className="pt-4 border-t border-border-light dark:border-border-dark">
-        <div
-          className="flex justify-between items-center cursor-pointer"
-          onClick={() => setIsCrewOpen(!isCrewOpen)}
-        >
-          <h4 className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
-            Assign Crew <span className="text-gray-500 text-xs">(Optional)</span>
-          </h4>
-          <svg className={`w-5 h-5 transition-transform ${isCrewOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-        </div>
-        {isCrewOpen && (
-          <div className="mt-2 max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-2 border border-border-light dark:border-border-dark">
-            {crews.map(crewMember => {
-              const isBusy = busyCrewIds.has(crewMember.id);
-              const isSelected = formData.crew.includes(crewMember.id);
-              return (
-                <label 
-                  key={crewMember.id} 
-                  className={`flex items-center justify-between p-2 rounded-md transition-colors ${
-                    isBusy && !isSelected
-                      ? 'cursor-not-allowed bg-gray-100 dark:bg-gray-800 opacity-50'
-                      : 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleCrewToggle(crewMember.id)}
-                      disabled={isBusy && !isSelected}
-                      className="form-checkbox h-4 w-4 text-brand-blue bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark rounded focus:ring-brand-blue"
-                    />
-                    <span className="ml-3 text-sm text-text-primary-light dark:text-text-primary-dark">{crewMember.name}</span>
-                  </div>
-                  {isBusy && !isSelected && (
-                    <span className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/50 px-2 py-1 rounded-full">Busy</span>
-                  )}
-                </label>
-              );
-            })}
+      {!hasPackageSelected && (
+        <div className="mb-6">
+          <label className="block text-lg font-bold mb-2 text-gray-800 dark:text-white">Assign Crew</label>
+          <div className="p-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
+            <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsCrewOpen(!isCrewOpen)}>
+              <span className="font-medium text-gray-700 dark:text-gray-200">
+                {formData.crew.length > 0
+                  ? formData.crew.map(id => crews.find(c => c.id === id)?.name).join(', ')
+                  : 'Select Crew...'}
+              </span>
+              <svg className={`w-5 h-5 text-gray-500 transition-transform ${isCrewOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+            {isCrewOpen && (
+              <div className="mt-4 space-y-3">
+                {crews.map((crewMember) => {
+                  const isBusy = busyCrewIds.has(crewMember.id);
+                  return (
+                    <label 
+                      key={crewMember.id} 
+                      className={`flex items-center justify-between p-3 rounded-lg transition-colors ${isBusy ? 'cursor-not-allowed bg-gray-200 dark:bg-gray-600 opacity-70' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                    >
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.crew.includes(crewMember.id)}
+                          onChange={() => !isBusy && handleCrewToggle(crewMember.id)}
+                          disabled={isBusy}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200">{crewMember.name}</span>
+                      </div>
+                      {isBusy && (
+                        <span className="text-xs font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">Busy</span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-
-      {/* Total Cost Override */}
-      <div className="pt-4 border-t border-border-light dark:border-border-dark">
-        <div className="mb-4">
-          <label htmlFor="edit-total_cost" className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1">
-            Total Cost <span className="text-gray-500 text-xs">(Manual Override)</span>
-          </label>
-          <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
-            Automatically calculated cost is ₱{calculatedCost.toLocaleString()}. You can override this amount if needed.
-          </p>
+          {errors.crew && <p className="text-red-500 text-sm mt-2">{errors.crew}</p>}
         </div>
-
+      )}
+      
+      {/* Total Cost */}
+      <div className="mb-6">
+        <label htmlFor="total_cost" className="block text-lg font-bold mb-2 text-gray-800 dark:text-white">Total Cost</label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">₱</span>
           <input
@@ -518,6 +602,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
             name="total_cost"
             value={formData.total_cost}
             onChange={handleChange}
+            onBlur={handleBlur}
             className="block w-full rounded-md bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2 pl-8"
             placeholder="0.00"
             disabled={isSubmitting}

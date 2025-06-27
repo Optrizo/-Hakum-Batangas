@@ -1,11 +1,16 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useQueue } from '../context/QueueContext';
 import QueueItem from './QueueItem';
-import { Search, Filter, Calendar, AlertCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { ServiceStatus } from '../types';
+import { Search, Filter, Calendar, AlertCircle, ChevronLeft, ChevronRight, X, Car, Bike } from 'lucide-react';
+import { ServiceStatus, Car as CarType, Motor } from '../types';
 
-const QueueList: React.FC = () => {
-  const { cars, loading, error } = useQueue();
+interface QueueListProps {
+  vehicles: (CarType | Motor)[];
+  vehicleType: 'car' | 'motorcycle';
+}
+
+const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
+  const { loading, error } = useQueue();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ServiceStatus | 'all'>('waiting');
   const [dateFilter, setDateFilter] = useState('today');
@@ -33,58 +38,58 @@ const QueueList: React.FC = () => {
     };
   }, [showCalendar]);
 
-  const filteredCars = useMemo(() => {
-    return cars.filter(car => {
+  const filteredVehicles = useMemo(() => {
+    return vehicles.filter(vehicle => {
       const matchesSearch = 
-        car.plate.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        car.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        car.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        car.phone.toLowerCase().includes(searchTerm.toLowerCase());
+        vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ('service' in vehicle ? vehicle.service.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+        vehicle.phone?.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesStatus = statusFilter === 'all' || car.status === statusFilter;
+      const matchesStatus = statusFilter === 'all' || vehicle.status === statusFilter;
 
-      const carDate = new Date(car.created_at);
+      const vehicleDate = new Date(vehicle.created_at);
       const today = new Date();
       
       let matchesDate = false;
       if (dateFilter === 'today') {
-        matchesDate = carDate.toDateString() === today.toDateString();
+        matchesDate = vehicleDate.toDateString() === today.toDateString();
       } else if (dateFilter === 'all') {
         matchesDate = true;
       } else if (dateFilter === 'custom' && selectedDate) {
         const selectedDateObj = new Date(selectedDate);
-        matchesDate = carDate.toDateString() === selectedDateObj.toDateString();
+        matchesDate = vehicleDate.toDateString() === selectedDateObj.toDateString();
       }
       
       return matchesSearch && matchesStatus && matchesDate;
     });
-  }, [cars, searchTerm, statusFilter, dateFilter, selectedDate]);
+  }, [vehicles, searchTerm, statusFilter, dateFilter, selectedDate]);
 
-  // Get cars filtered by date only (for statistics)
-  const dateFilteredCars = useMemo(() => {
-    return cars.filter(car => {
-      const carDate = new Date(car.created_at);
+  // Get vehicles filtered by date only (for statistics)
+  const dateFilteredVehicles = useMemo(() => {
+    return vehicles.filter(vehicle => {
+      const vehicleDate = new Date(vehicle.created_at);
       const today = new Date();
       
       let matchesDate = false;
       if (dateFilter === 'today') {
-        matchesDate = carDate.toDateString() === today.toDateString();
+        matchesDate = vehicleDate.toDateString() === today.toDateString();
       } else if (dateFilter === 'all') {
         matchesDate = true;
       } else if (dateFilter === 'custom' && selectedDate) {
         const selectedDateObj = new Date(selectedDate);
-        matchesDate = carDate.toDateString() === selectedDateObj.toDateString();
+        matchesDate = vehicleDate.toDateString() === selectedDateObj.toDateString();
       }
       
       return matchesDate;
     });
-  }, [cars, dateFilter, selectedDate]);
+  }, [vehicles, dateFilter, selectedDate]);
 
-  const waitingCount = dateFilteredCars.filter(car => car.status === 'waiting').length;
-  const inProgressCount = dateFilteredCars.filter(car => car.status === 'in-progress').length;
-  const paymentPendingCount = dateFilteredCars.filter(car => car.status === 'payment-pending').length;
-  const cancelledCount = dateFilteredCars.filter(car => car.status === 'cancelled').length;
-  const completedCount = dateFilteredCars.filter(car => car.status === 'completed').length;
+  const waitingCount = dateFilteredVehicles.filter(vehicle => vehicle.status === 'waiting').length;
+  const inProgressCount = dateFilteredVehicles.filter(vehicle => vehicle.status === 'in-progress').length;
+  const paymentPendingCount = dateFilteredVehicles.filter(vehicle => vehicle.status === 'payment-pending').length;
+  const cancelledCount = dateFilteredVehicles.filter(vehicle => vehicle.status === 'cancelled').length;
+  const completedCount = dateFilteredVehicles.filter(vehicle => vehicle.status === 'completed').length;
 
   // Calendar functions
   const getDaysInMonth = (date: Date) => {
@@ -214,6 +219,14 @@ const QueueList: React.FC = () => {
     setShowCalendar(false);
   };
 
+  const getVehicleTypeIcon = () => {
+    return vehicleType === 'car' ? <Car className="h-4 w-4" /> : <Bike className="h-4 w-4" />;
+  };
+
+  const getVehicleTypeLabel = () => {
+    return vehicleType === 'car' ? 'Cars' : 'Motorcycles';
+  };
+
   if (error) {
     return (
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start">
@@ -233,19 +246,25 @@ const QueueList: React.FC = () => {
   }
 
   return (
-    <div className="space-y-3 sm:space-y-4 md:space-y-6">
-      <div className="bg-surface-light dark:bg-surface-dark p-3 sm:p-4 rounded-lg shadow-lg border border-border-light dark:border-border-dark">
-        <div className="flex flex-col gap-3 sm:gap-4">
-          <div className="relative">
+    <div className="space-y-4">
+      {/* Vehicle Type Header */}
+      <div className="flex items-center gap-2 text-text-secondary-light dark:text-text-secondary-dark">
+        {getVehicleTypeIcon()}
+        <span className="text-sm font-medium">Showing {getVehicleTypeLabel()}</span>
+      </div>
+
+      <div className="bg-surface-light dark:bg-surface-dark p-3 sm:p-4 rounded-lg shadow-sm border border-border-light dark:border-border-dark">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-grow">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 sm:h-5 sm:w-5 text-text-secondary-light dark:text-text-secondary-dark" />
+              <Search className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
-              placeholder="Search plate, model, service or phone..."
+              placeholder={`Search ${vehicleType === 'car' ? 'car' : 'motorcycle'} plate, model, service...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-9 sm:pl-10 pr-3 py-2.5 sm:py-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg leading-5 placeholder-text-secondary-light dark:placeholder-text-secondary-dark focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-brand-blue text-sm transition-all duration-200"
+              className="block w-full pl-10 pr-3 py-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-md leading-5 placeholder-gray-500 focus:outline-none focus:ring-brand-blue focus:border-brand-blue sm:text-sm"
             />
           </div>
 
@@ -363,66 +382,37 @@ const QueueList: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
-          { title: 'Waiting', count: waitingCount, status: 'waiting', color: 'blue' },
-          { title: 'In Progress', count: inProgressCount, status: 'in-progress', color: 'sky' },
-          { title: 'Payment', count: paymentPendingCount, status: 'payment-pending', color: 'yellow' },
-          { title: 'Cancelled', count: cancelledCount, status: 'cancelled', color: 'red' },
-          { title: 'Completed', count: completedCount, status: 'completed', color: 'green' },
-          { title: 'Total', count: dateFilteredCars.length, status: 'all', color: 'gray' }
+          { title: 'Waiting', count: waitingCount, status: 'waiting' },
+          { title: 'In Progress', count: inProgressCount, status: 'in-progress' },
+          { title: 'Payment', count: paymentPendingCount, status: 'payment-pending' },
+          { title: 'Completed', count: completedCount, status: 'completed' },
+          { title: 'Cancelled', count: cancelledCount, status: 'cancelled' },
+          { title: 'All', count: dateFilteredVehicles.length, status: 'all' }
         ].map(item => (
           <div 
-            key={item.title}
-            className={`bg-surface-light dark:bg-surface-dark rounded-lg p-2 sm:p-3 lg:p-4 border border-border-light dark:border-border-dark cursor-pointer hover:border-brand-blue dark:hover:border-brand-blue transition-all duration-200 transform hover:scale-105 ${
-              item.title === 'Total' ? 'col-span-2 sm:col-span-1' : ''
-            }`}
-            onClick={() => setStatusFilter(item.status as any)}
+            key={item.status}
+            onClick={() => setStatusFilter(item.status as ServiceStatus | 'all')}
+            className={`p-4 rounded-lg cursor-pointer transition-all duration-200 ${statusFilter === item.status ? 'bg-brand-blue text-white shadow-lg' : 'bg-surface-light dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-gray-700'}`}
           >
-          <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark truncate">
-                  {item.title === 'Total' 
-                    ? (dateFilter === 'today' ? 'Total Today' : dateFilter === 'custom' ? 'Total Selected Day' : 'Total All Time')
-                    : item.title}
-                </p>
-                <p className="text-base sm:text-lg lg:text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">{item.count}</p>
-              </div>
-              <div className={`bg-${item.color}-500/10 rounded-full p-1 sm:p-1.5 lg:p-2 flex-shrink-0`}>
-                <div className={`h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 rounded-full bg-${item.color}-500 flex items-center justify-center text-xs font-bold text-white`}>
-                  {item.count > 99 ? '99+' : item.count}
-            </div>
-              </div>
-            </div>
+            <p className={`text-sm font-medium ${statusFilter === item.status ? 'text-white/80' : 'text-text-secondary-light dark:text-text-secondary-dark'}`}>{item.title}</p>
+            <p className="text-2xl font-bold">{item.count}</p>
           </div>
         ))}
       </div>
 
       {loading ? (
-        <div className="bg-surface-light dark:bg-surface-dark p-4 sm:p-6 lg:p-8 text-center rounded-lg border border-border-light dark:border-border-dark">
-          <div className="animate-pulse flex flex-col items-center">
-            <div className="h-6 w-6 sm:h-8 sm:w-8 bg-gray-200 dark:bg-gray-700 rounded-full mb-3 sm:mb-4 animate-spin"></div>
-            <div className="h-3 w-24 sm:w-32 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-            <div className="h-3 w-20 sm:w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          </div>
-        </div>
-      ) : filteredCars.length > 0 ? (
-        <div className="space-y-2 sm:space-y-3 lg:space-y-4">
-          {filteredCars.map(car => (
-            <QueueItem key={car.id} car={car} />
-          ))}
-        </div>
+        <div className="text-center p-8">Loading...</div>
       ) : (
-        <div className="bg-surface-light dark:bg-surface-dark p-4 sm:p-6 lg:p-8 text-center rounded-lg border border-border-light dark:border-border-dark">
-          <div className="flex flex-col items-center">
-            <Search className="h-8 w-8 sm:h-12 sm:w-12 text-text-secondary-light dark:text-text-secondary-dark mb-3 sm:mb-4 opacity-50" />
-            <p className="text-text-secondary-light dark:text-text-secondary-dark text-sm sm:text-base">
-              No vehicles match the current criteria
-            </p>
-            <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark mt-1">
-              Try adjusting your search or filters
-            </p>
+        <div className="space-y-4">
+          {filteredVehicles.length > 0 ? (
+            filteredVehicles.map(vehicle => <QueueItem key={vehicle.id} vehicle={vehicle} />)
+      ) : (
+            <div className="text-center p-8 bg-surface-light dark:bg-surface-dark rounded-lg">
+              <p className="font-medium">No {vehicleType === 'car' ? 'cars' : 'motorcycles'} match the current filters.</p>
           </div>
+          )}
         </div>
       )}
     </div>

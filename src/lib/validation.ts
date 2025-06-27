@@ -21,9 +21,27 @@ export const validateLicensePlate = (plate: string): ValidationResult => {
     return { isValid: false, error: 'License plate is too long' };
   }
 
-  const plateRegex = /^[A-Z]{3}-?\d{3,4}$/;
+  // Regex for cars (LLL-DDDD or LLL-DDD) and motorcycles (LL-DDDDD or DDD-LLL)
+  const plateRegex = /^(?:[A-Z]{3}-?\d{3,4}|[A-Z]{2}-?\d{5}|\d{3}-?[A-Z]{3})$/;
   if (!plateRegex.test(sanitizedPlate)) {
-    return { isValid: false, error: 'Please enter a valid Philippine license plate format (e.g., ABC-1234 or ABC1234)' };
+    return { isValid: false, error: 'Please enter a valid PH car or motorcycle plate format (e.g., ABC-1234, AB12345, 123-ABC)' };
+  }
+
+  return { isValid: true };
+};
+
+// Motorcycle license plate validation (specific format: 123-ABC)
+export const validateMotorcyclePlate = (plate: string): ValidationResult => {
+  if (!plate || typeof plate !== 'string') {
+    return { isValid: false, error: 'Motorcycle license plate is required' };
+  }
+
+  const sanitizedPlate = plate.trim().toUpperCase();
+  
+  // Specific format for motorcycles: 123-ABC
+  const motorcyclePlateRegex = /^\d{3}-[A-Z]{3}$/;
+  if (!motorcyclePlateRegex.test(sanitizedPlate)) {
+    return { isValid: false, error: 'Motorcycle plate must be in format 123-ABC' };
   }
 
   return { isValid: true };
@@ -78,6 +96,39 @@ export const validateCarModel = (model: string): ValidationResult => {
   return { isValid: true };
 };
 
+// Motorcycle model validation
+export const validateMotorcycleModel = (model: string): ValidationResult => {
+  if (!model || typeof model !== 'string') {
+    return { isValid: false, error: 'Motorcycle model is required' };
+  }
+
+  const sanitizedModel = model.trim();
+  
+  if (sanitizedModel.length < 2) {
+    return { isValid: false, error: 'Motorcycle model must be at least 2 characters long' };
+  }
+
+  if (sanitizedModel.length > 100) {
+    return { isValid: false, error: 'Motorcycle model is too long (maximum 100 characters)' };
+  }
+
+  // Check for potentially malicious content
+  const suspiciousPatterns = [
+    /<script/i,
+    /javascript:/i,
+    /on\w+\s*=/i,
+    /data:text\/html/i
+  ];
+
+  for (const pattern of suspiciousPatterns) {
+    if (pattern.test(sanitizedModel)) {
+      return { isValid: false, error: 'Motorcycle model contains invalid characters' };
+    }
+  }
+
+  return { isValid: true };
+};
+
 // Cost validation
 export const validateCost = (cost: number | string): ValidationResult => {
   const numericCost = typeof cost === 'string' ? parseFloat(cost) : cost;
@@ -103,6 +154,17 @@ export const validateCarSize = (size: string): ValidationResult => {
   
   if (!size || !validSizes.includes(size)) {
     return { isValid: false, error: 'Please select a valid car size' };
+  }
+
+  return { isValid: true };
+};
+
+// Motorcycle size validation
+export const validateMotorcycleSize = (size: string): ValidationResult => {
+  const validSizes = ['small', 'large'];
+  
+  if (!size || !validSizes.includes(size)) {
+    return { isValid: false, error: 'Please select a valid motorcycle size' };
   }
 
   return { isValid: true };

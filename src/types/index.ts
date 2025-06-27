@@ -1,4 +1,5 @@
 export type CarSize = 'small' | 'medium' | 'large' | 'extra_large';
+export type MotorcycleSize = 'small' | 'large';
 
 export type ServiceStatus = 'waiting' | 'in-progress' | 'payment-pending' | 'completed' | 'cancelled';
 
@@ -9,6 +10,11 @@ export interface SizePricing {
   extra_large: number;
 }
 
+export interface MotorcycleSizePricing {
+  small: number;
+  large: number;
+}
+
 export interface Service {
   id: string;
   name: string;
@@ -17,6 +23,7 @@ export interface Service {
   pricing?: SizePricing;
   created_at?: string;
   updated_at?: string;
+  vehicle_type?: 'car' | 'motorcycle';
 }
 
 export interface ServicePackage {
@@ -26,8 +33,10 @@ export interface ServicePackage {
   service_ids: string[];
   pricing: SizePricing;
   is_active: boolean;
+  requiresCrew?: boolean;
   created_at?: string;
   updated_at?: string;
+  vehicle_type?: 'car' | 'motorcycle';
 }
 
 export interface CrewMember {
@@ -55,11 +64,32 @@ export interface Car {
   updated_at: string;
 }
 
+export interface Motor {
+  id: string;
+  plate: string; // 123-ABC
+  model: string;
+  size: MotorcycleSize;
+  status: ServiceStatus;
+  phone?: string;
+  crew?: string[];
+  total_cost: number;
+  services: string[];
+  package?: string;
+  vehicle_type: 'motorcycle';
+  created_at: string;
+  updated_at: string;
+}
+
 export const CAR_SIZES: { label: string; value: CarSize }[] = [
   { label: 'Small', value: 'small' },
   { label: 'Medium', value: 'medium' },
   { label: 'Large', value: 'large' },
   { label: 'Extra Large', value: 'extra_large' },
+];
+
+export const MOTORCYCLE_SIZES: { label: string; value: MotorcycleSize }[] = [
+  { label: 'Small', value: 'small' },
+  { label: 'Large', value: 'large' },
 ];
 
 export const SERVICE_STATUSES: { label: string; value: ServiceStatus }[] = [

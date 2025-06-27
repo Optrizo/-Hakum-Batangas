@@ -24,6 +24,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { to: '/customer', label: 'Customer View' },
     { to: '/crew', label: 'Crew' },
     { to: '/services', label: 'Services' },
+    { to: '/motorcycle-services', label: 'Motorcycle Services' },
+    { to: '/motorcycle-packages', label: 'Motorcycle Packages' },
   ];
 
   // Choose logo based on theme
