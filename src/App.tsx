@@ -9,7 +9,6 @@ import CrewManager from './components/CrewManager';
 import ServicesPage from './components/ServicesPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import MotorcycleServicesPage from './components/MotorcycleServicesPage';
-import MotorcyclePackagesPage from './components/MotorcyclePackagesPage';
 
 function App() {
   return (
@@ -23,7 +22,6 @@ function App() {
           <Route path="/crew" element={<Layout><CrewManager /></Layout>} />
           <Route path="/services" element={<Layout><ServicesPage /></Layout>} />
           <Route path="/motorcycle-services" element={<Layout><MotorcycleServicesPage /></Layout>} />
-          <Route path="/motorcycle-packages" element={<Layout><MotorcyclePackagesPage /></Layout>} />
         </Routes>
       </QueueProvider>
       </ThemeProvider>

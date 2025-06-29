@@ -371,6 +371,19 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       throw new Error('Invalid vehicle ID provided.');
     }
 
+    // Duplicate check: prevent updating to a plate already in use by another active car
+    if (updates.plate !== undefined) {
+      const trimmedPlate = updates.plate.trim().toUpperCase();
+      const isDuplicate = cars.some(
+        c => c.id !== id &&
+             c.plate.trim().toUpperCase() === trimmedPlate &&
+             (c.status === 'waiting' || c.status === 'in-progress')
+      );
+      if (isDuplicate) {
+        throw new Error('This license plate is already in the active queue for another vehicle.');
+      }
+    }
+
     // Sanitize and validate updates
     const sanitizedUpdates: Partial<Car> = {};
     
@@ -552,7 +565,17 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!updates.plate.trim()) {
         throw new Error('Motorcycle license plate cannot be empty.');
       }
-      sanitizedUpdates.plate = updates.plate.toUpperCase().trim();
+      // Duplicate check: prevent updating to a plate already in use by another active motorcycle
+      const trimmedPlate = updates.plate.trim().toUpperCase();
+      const isDuplicate = motorcycles.some(
+        m => m.id !== id &&
+             m.plate.trim().toUpperCase() === trimmedPlate &&
+             (m.status === 'waiting' || m.status === 'in-progress')
+      );
+      if (isDuplicate) {
+        throw new Error('This license plate is already in the active queue for another motorcycle.');
+      }
+      sanitizedUpdates.plate = trimmedPlate;
     }
 
     if (updates.model !== undefined) {

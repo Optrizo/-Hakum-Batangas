@@ -16,7 +16,7 @@ interface EditMotorcycleFormProps {
 }
 
 const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onComplete }) => {
-  const { updateMotorcycle, services, packages, crews } = useQueue();
+  const { updateMotorcycle, services, packages, crews, motorcycles } = useQueue();
   
   const [formData, setFormData] = useState({
     plate: motorcycle.plate,
@@ -246,6 +246,18 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
     // Validate required fields
     const plateResult = validateMotorcyclePlate(formData.plate);
     if (!plateResult.isValid) newErrors.plate = plateResult.error!;
+    else {
+      // Check for duplicate plate in active queue, excluding the current motorcycle
+      const trimmedPlate = formData.plate.trim().toUpperCase();
+      const isDuplicate = motorcycles.some(
+        m => m.id !== motorcycle.id &&
+             m.plate.trim().toUpperCase() === trimmedPlate &&
+             (m.status === 'waiting' || m.status === 'in-progress')
+      );
+      if (isDuplicate) {
+        newErrors.plate = 'This license plate is already in the active queue for another motorcycle.';
+      }
+    }
 
     const modelResult = validateMotorcycleModel(formData.model);
     if (!modelResult.isValid) newErrors.model = modelResult.error!;
