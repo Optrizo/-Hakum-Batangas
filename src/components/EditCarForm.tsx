@@ -72,7 +72,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
   const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [isPackagesOpen, setIsPackagesOpen] = useState(false);
   const [isCrewOpen, setIsCrewOpen] = useState(false);
-  const [calculatedCost, setCalculatedCost] = useState(0);
+  const [totalCost, setTotalCost] = useState(car.total_cost || 0);
   const [isCostOverridden, setIsCostOverridden] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const formTopRef = useRef<HTMLDivElement>(null);
@@ -99,21 +99,29 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
   }, [carPackages, formData.size]);
 
   useEffect(() => {
-    const serviceTotal = formData.selectedServices.reduce((sum, serviceId) => {
-      return sum + (servicePrices[serviceId] || 0);
-    }, 0);
-    
-    const packageTotal = formData.selectedPackages.reduce((sum, packageId) => {
-      return sum + (packagePrices[packageId] || 0);
-    }, 0);
-    
+    if (isCostOverridden) return;
+    const serviceTotal = formData.selectedServices.reduce((sum, serviceId) => sum + (servicePrices[serviceId] || 0), 0);
+    const packageTotal = formData.selectedPackages.reduce((sum, packageId) => sum + (packagePrices[packageId] || 0), 0);
     const total = serviceTotal + packageTotal;
-    setCalculatedCost(total);
-    
-    if (!isCostOverridden) {
-      setFormData(prev => ({ ...prev, total_cost: total }));
-    }
+    setTotalCost(total);
   }, [formData.selectedServices, formData.selectedPackages, servicePrices, packagePrices, isCostOverridden]);
+
+  useEffect(() => {
+    setFormData({
+      plate: car.plate,
+      model: car.model,
+      size: car.size,
+      service: car.service,
+      status: car.status,
+      phone: car.phone || '',
+      crew: car.crew || [],
+      selectedServices: initialSelectedServices,
+      selectedPackages: initialSelectedPackages,
+      total_cost: car.total_cost || 0,
+    });
+    setTotalCost(car.total_cost || 0);
+    setIsCostOverridden(false);
+  }, [car.id]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -125,7 +133,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
       const trimmedPlate = formData.plate.trim().toUpperCase();
       const isDuplicate = cars.some(
         c => c.id !== car.id &&
-             c.plate.trim().toUpperCase() === trimmedPlate && 
+             c.plate.trim().toUpperCase() === trimmedPlate &&
              (c.status === 'waiting' || c.status === 'in-progress')
       );
       if (isDuplicate) {
@@ -145,7 +153,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
     const statusResult = validateServiceStatus(formData.status);
     if (!statusResult.isValid) newErrors.status = statusResult.error!;
 
-    const costResult = validateCost(formData.total_cost);
+    const costResult = validateCost(totalCost);
     if (!costResult.isValid) newErrors.total_cost = costResult.error!;
 
     if (formData.status === 'in-progress' && formData.crew.length === 0 && !hasPackageSelected) {
@@ -167,7 +175,8 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
 
     if (name === 'total_cost') {
       setIsCostOverridden(true);
-      formattedValue = value === '' ? 0 : parseFloat(value);
+      setTotalCost(value === '' ? 0 : parseFloat(value));
+      return;
     } else if (name === 'plate') {
       formattedValue = value.toUpperCase();
     } else if (name === 'phone') {
@@ -210,7 +219,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
         result = validateServiceStatus(value);
         break;
       case 'total_cost':
-        result = validateCost(formData.total_cost);
+        result = validateCost(totalCost);
         break;
       default:
         return;
@@ -296,15 +305,10 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
         ...selectedPackageNames
       ];
       await updateCar(car.id, {
-        plate: formData.plate,
-        model: formData.model,
-        size: formData.size,
-        status: formData.status,
-        phone: formData.phone.trim() ? formData.phone : '',
-        crew: formData.crew,
+        ...formData,
+        total_cost: totalCost,
         service: allServiceNames.join(', '),
         services: allSelectedServiceIds,
-        total_cost: formData.total_cost,
       });
       onComplete();
     } catch (error) {
@@ -600,7 +604,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
             type="number"
             id="edit-total_cost"
             name="total_cost"
-            value={formData.total_cost}
+            value={totalCost}
             onChange={handleChange}
             onBlur={handleBlur}
             className="block w-full rounded-md bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2 pl-8"
