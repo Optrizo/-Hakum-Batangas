@@ -65,12 +65,13 @@ const CustomerView: React.FC = () => {
     { title: 'READY FOR PAYMENT', vehicles: activeVehicles.filter(v => v.status === 'payment-pending'), color: '#f59e0b' },
   ], [activeVehicles]);
 
-  // Helper to determine card/text size based on vehicle count
+  // Dynamically adjust card size and font size based on vehicle count to fit everything on screen.
   const getCardSizeClass = (count: number) => {
-    if (count <= 2) return 'text-2xl p-8 min-h-[200px]';
-    if (count <= 4) return 'text-xl p-6 min-h-[160px]';
-    if (count <= 6) return 'text-lg p-4 min-h-[120px]';
-    return 'text-base p-3 min-h-[90px]';
+    if (count <= 1) return 'p-8 text-xl'; // Large and spacious for one item
+    if (count <= 2) return 'p-6 text-lg';
+    if (count <= 4) return 'p-4 text-base';
+    if (count <= 6) return 'p-3 text-sm';
+    return 'p-2 text-xs'; // Smaller for many items
   };
 
   const VehicleCard = ({ vehicle, sizeClass }: { vehicle: Car | Motor, sizeClass: string }) => {
@@ -79,80 +80,89 @@ const CustomerView: React.FC = () => {
 
     const hasPackage = (() => {
       if (isMotorcycle) {
-        // Motorcycles have an explicit package field
         return !!(vehicle as Motor).package;
       }
-      // For cars, check if the service name matches a package name
       const carService = (vehicle as Car).service;
       return packages.some(p => p.name === carService);
     })();
 
+    // Refactored to return an array of badge elements for both cars and motorcycles
     const getServiceDisplay = () => {
+      let badgeNames: string[] = [];
+
       if (isMotorcycle) {
         const motor = vehicle as Motor;
         const serviceNames = motor.services.map(getServiceName).filter(name => name && name !== '...');
-        let badges = serviceNames;
+        badgeNames.push(...serviceNames);
         if (motor.package) {
           const pkgName = getPackageName(motor.package);
           if (pkgName && pkgName !== '...') {
-            badges = [...badges, pkgName];
+            badgeNames.push(pkgName);
           }
         }
-        // Dynamic badge size
-        let badgeClass = '';
-        if (badges.length === 1) badgeClass = 'text-lg px-6 py-2';
-        else if (badges.length === 2) badgeClass = 'text-base px-4 py-1.5';
-        else if (badges.length <= 4) badgeClass = 'text-sm px-3 py-1';
-        else badgeClass = 'text-xs px-2 py-0.5';
-        return (
-          <div className="flex flex-wrap mt-2 w-full">
-            {badges.map(name => (
-              <span key={name} className={`inline-block ${isDark ? 'bg-blue-900 text-blue-200' : 'bg-blue-200 text-blue-900'} font-bold rounded-full mr-2 mb-2 whitespace-nowrap shadow ${badgeClass}`}>
-                {name}
-              </span>
-            ))}
-          </div>
-        );
+      } else { // Car
+        const car = vehicle as Car;
+        if (car.service) {
+          // Split by comma for multiple services
+          const services = car.service.split(',').map(s => s.trim()).filter(Boolean);
+          badgeNames.push(...services);
+        }
       }
-      // Car: show as single badge
-      return (
-        <span className={`inline-block ${isDark ? 'bg-blue-900 text-blue-200' : 'bg-blue-200 text-blue-900'} text-lg font-bold px-6 py-2 rounded-full mr-2 mb-2 whitespace-nowrap shadow`}>{(vehicle as Car).service}</span>
-      );
+
+      if (badgeNames.length === 0) return null;
+
+      return badgeNames.map((name, idx) => (
+        <span 
+          key={`${name}-${idx}`} 
+          className={`
+            inline-block ${isDark ? 'bg-blue-900 text-blue-200' : 'bg-blue-200 text-blue-900'} 
+            font-bold rounded-full shadow
+            text-[0.8em] px-3 py-1 
+            break-words max-w-full
+          `}
+        >
+          {name}
+        </span>
+      ));
     };
 
     return (
-      <div className={`${bgCard} ${borderCard} rounded-xl flex flex-row items-stretch flex-grow basis-0 min-h-0 shadow-2xl transition-all duration-300 ${sizeClass} mb-4 pb-2`} style={{ boxShadow: isDark ? '0 4px 24px 0 #0006' : '0 4px 24px 0 #b6c6e6' }}>
-        {/* Left column: icon, plate/model, crew */}
-        <div className="flex flex-col justify-center min-w-[160px] pr-4">
-          <div className="flex items-center gap-3 mb-1">
-            {isMotorcycle ?
-              <BikeIcon className={`h-6 w-6 ${textSecondary} flex-shrink-0`} /> :
+      // Use flex-col and justify-start for a professional, non-stretching layout
+      <div 
+        className={`${bgCard} ${borderCard} rounded-xl flex flex-col justify-start gap-4 shadow-2xl transition-all duration-300 ${sizeClass} mb-4`} 
+        style={{ boxShadow: isDark ? '0 4px 24px 0 #0006' : '0 4px 24px 0 #b6c6e6' }}
+      >
+        {/* Top section: Plate, Model, Crew */}
+        <div className="flex flex-row items-start justify-between w-full">
+          {/* Left part of top section: Icon, Plate, Model */}
+          <div className="flex items-center gap-3">
+            {isMotorcycle ? 
+              <BikeIcon className={`h-6 w-6 ${textSecondary} flex-shrink-0`} /> : 
               <CarIcon className={`h-6 w-6 ${textSecondary} flex-shrink-0`} />
             }
             <div>
-              <p className="text-2xl font-extrabold tracking-wide mb-0.5">{vehicle.plate}</p>
-              <p className={`text-sm ${textSecondary}`}>{vehicle.model} ({vehicle.size})</p>
+              <p className="text-[1.4em] font-extrabold tracking-wide mb-0.5">{vehicle.plate}</p>
+              <p className={`text-[0.8em] ${textSecondary}`}>{vehicle.model} ({vehicle.size})</p>
             </div>
           </div>
-          {/* Crew section (if present) */}
+          {/* Right part of top section: Crew */}
           {crewMembers.length > 0 && !hasPackage && (
-            <div className="flex items-center gap-2 flex-wrap mt-1">
-              <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Crew:</p>
+            <div className="flex items-center gap-2 flex-wrap justify-end text-right ml-4">
+              <p className={`text-[0.8em] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Crew:</p>
               {crewMembers.map(name => (
                 <span key={name} className={`
-                  ${isDark ? 'bg-gray-700 text-gray-200' : 'bg-blue-100 text-blue-900'}
-                  text-xs font-bold px-2 py-0.5 rounded-full shadow-sm
+                  ${isDark ? 'bg-gray-700 text-gray-200' : 'bg-blue-100 text-blue-900'} 
+                  text-[0.8em] font-bold px-2 py-0.5 rounded-full shadow-sm
                   ${!isDark ? 'border border-blue-200' : ''}
                 `}>{name}</span>
               ))}
             </div>
           )}
         </div>
-        {/* Right column: badges, vertically centered */}
-        <div className="flex flex-col justify-center flex-grow">
-          <div className="flex flex-wrap items-center gap-2">
-            {getServiceDisplay()}
-          </div>
+
+        {/* Bottom section: Service Badges */}
+        <div className="flex flex-wrap items-center gap-2 mt-4 w-full">
+          {getServiceDisplay()}
         </div>
       </div>
     );
@@ -199,7 +209,7 @@ const CustomerView: React.FC = () => {
                 </div>
                 <div className="mt-1 h-1 rounded-full" style={{ backgroundColor: column.color }}></div>
               </div>
-              <div className="flex-grow grid auto-rows-fr gap-3 p-3 min-h-0" style={{ gridTemplateRows: `repeat(${column.vehicles.length}, minmax(0, 1fr))` }}>
+              <div className="flex-grow grid gap-3 p-3 min-h-0" style={{ gridTemplateRows: `repeat(${column.vehicles.length || 1}, minmax(0, 1fr))` }}>
                 {column.vehicles.length > 0 ? (
                   column.vehicles.map(v => <VehicleCard key={v.id} vehicle={v} sizeClass={sizeClass} />)
                 ) : (
