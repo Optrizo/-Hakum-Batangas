@@ -227,14 +227,15 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   };
 
   const validateServicesAndPackages = (services: string[], packages: string[]) => {
-    if (services.length === 0 && packages.length === 0) {
-      setErrors(prev => ({ ...prev, services: 'Please select at least one service or package.' }));
-    } else {
-      setErrors(prev => {
-        const { services: _, ...rest } = prev;
-        return rest;
-      });
-    }
+    // Validate services/packages - now optional
+    // if (services.length === 0 && packages.length === 0) {
+    //   setErrors(prev => ({ ...prev, services: 'Please select at least one service or package.' }));
+    // } else {
+    //   setErrors(prev => {
+    //     const { services: _, ...rest } = prev;
+    //     return rest;
+    //   });
+    // }
   };
 
   const validate = (): boolean => {
@@ -257,11 +258,6 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
     if (formData.phone) {
       const phoneResult = validatePhoneNumber(formData.phone);
       if (!phoneResult.isValid) newErrors.phone = phoneResult.error!;
-    }
-
-    // Validate services/packages
-    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
-      newErrors.services = 'Please select at least one service or package.';
     }
 
     // Validate crew if status is 'in-progress'

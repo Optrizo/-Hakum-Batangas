@@ -91,26 +91,32 @@ const CustomerView: React.FC = () => {
       if (isMotorcycle) {
         const motor = vehicle as Motor;
         const serviceNames = motor.services.map(getServiceName).filter(name => name && name !== '...');
-        const badges = serviceNames.map(name => (
-          <span key={name} className={`inline-block ${isDark ? 'bg-blue-900 text-blue-200' : 'bg-blue-200 text-blue-900'} text-xs font-bold px-3 py-1 rounded-full mr-2 mb-2 whitespace-nowrap shadow`}>
-            {name}
-          </span>
-        ));
+        let badges = serviceNames;
         if (motor.package) {
           const pkgName = getPackageName(motor.package);
           if (pkgName && pkgName !== '...') {
-            badges.push(
-              <span key={pkgName} className={`inline-block ${isDark ? 'bg-blue-900 text-blue-200' : 'bg-blue-200 text-blue-900'} text-xs font-bold px-3 py-1 rounded-full mr-2 mb-2 whitespace-nowrap shadow`}>
-                {pkgName}
-              </span>
-            );
+            badges = [...badges, pkgName];
           }
         }
-        return <div className="flex flex-wrap mt-2">{badges}</div>;
+        // Dynamic badge size
+        let badgeClass = '';
+        if (badges.length === 1) badgeClass = 'text-lg px-6 py-2';
+        else if (badges.length === 2) badgeClass = 'text-base px-4 py-1.5';
+        else if (badges.length <= 4) badgeClass = 'text-sm px-3 py-1';
+        else badgeClass = 'text-xs px-2 py-0.5';
+        return (
+          <div className="flex flex-wrap mt-2 w-full">
+            {badges.map(name => (
+              <span key={name} className={`inline-block ${isDark ? 'bg-blue-900 text-blue-200' : 'bg-blue-200 text-blue-900'} font-bold rounded-full mr-2 mb-2 whitespace-nowrap shadow ${badgeClass}`}>
+                {name}
+              </span>
+            ))}
+          </div>
+        );
       }
       // Car: show as single badge
       return (
-        <span className={`inline-block ${isDark ? 'bg-blue-900 text-blue-200' : 'bg-blue-200 text-blue-900'} text-xs font-bold px-3 py-1 rounded-full mr-2 mb-2 whitespace-nowrap shadow`}>{(vehicle as Car).service}</span>
+        <span className={`inline-block ${isDark ? 'bg-blue-900 text-blue-200' : 'bg-blue-200 text-blue-900'} text-lg font-bold px-6 py-2 rounded-full mr-2 mb-2 whitespace-nowrap shadow`}>{(vehicle as Car).service}</span>
       );
     };
 

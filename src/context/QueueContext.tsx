@@ -68,6 +68,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { data, error } = await supabase
         .from('cars')
         .select('*')
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -104,6 +105,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { data, error } = await supabase
         .from('motorcycles')
         .select('*')
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -465,13 +467,15 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       addActiveOperation(operationId);
       const { error } = await supabase
         .from('cars')
-        .delete()
+        .update({ is_deleted: true, updated_at: new Date().toISOString() })
         .eq('id', id);
 
       if (error) {
         console.error('Supabase error removing car:', error);
         throw new Error(`Failed to remove vehicle: ${error.message}`);
       }
+      // Update local state immediately
+      setCars(prev => prev.filter(c => c.id !== id));
     } catch (err) {
       console.error('Error in removeCar:', err);
        if (err instanceof Error) {
@@ -648,7 +652,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       addActiveOperation(operationId);
       const { error } = await supabase
         .from('motorcycles')
-        .delete()
+        .update({ is_deleted: true, updated_at: new Date().toISOString() })
         .eq('id', id);
 
       if (error) {

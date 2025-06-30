@@ -187,7 +187,7 @@ const MotorcycleServicesPage: React.FC = () => {
                 <Box className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span>Packages</span>
                 <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full">{motorcyclePackages.length}</span>
-              </div>
+            </div>
             </button>
           </nav>
         </div>
@@ -398,50 +398,50 @@ const MotorcycleServicesPage: React.FC = () => {
         {activeTab === 'services' && !showServiceForm && (
           <div className="mb-10">
             <h2 className="text-xl font-semibold mb-4 text-text-primary-light dark:text-text-primary-dark">Services</h2>
-            <div className="bg-surface-light dark:bg-surface-dark shadow overflow-hidden rounded-lg border border-border-light dark:border-border-dark">
-              <ul className="divide-y divide-border-light dark:divide-border-dark">
-                {motorcycleServices.length > 0 ? motorcycleServices.map(service => (
-                  <li key={service.id} className="p-4 sm:p-6 hover:bg-background-light dark:hover:bg-background-dark transition-colors duration-200">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-base font-semibold text-text-primary-light dark:text-text-primary-dark truncate">{service.name}</h4>
-                        <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1 truncate">
-                          {service.description || 'No description available.'}
-                        </p>
-                      </div>
-                      <div className="flex items-baseline gap-4 mt-4 sm:mt-0 sm:ml-6">
-                        <div className="flex flex-col text-right">
-                          <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">Small</span>
-                          <span className="font-semibold text-text-primary-light dark:text-text-primary-dark">
-                            ₱{(service.pricing as MotorcycleSizePricing)?.small ?? 'N/A'}
-                          </span>
-                        </div>
-                         <div className="flex flex-col text-right">
-                          <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">Large</span>
-                          <span className="font-semibold text-text-primary-light dark:text-text-primary-dark">
-                            ₱{(service.pricing as MotorcycleSizePricing)?.large ?? 'N/A'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleEditClick(service)}
-                            className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                            title="Edit Service"
-                          >
-                            <Edit2 className="h-4 w-4 text-gray-500" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(service)}
-                            className="p-2 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                            title="Delete Service"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </button>
-                        </div>
-                      </div>
+        <div className="bg-surface-light dark:bg-surface-dark shadow overflow-hidden rounded-lg border border-border-light dark:border-border-dark">
+          <ul className="divide-y divide-border-light dark:divide-border-dark">
+            {motorcycleServices.length > 0 ? motorcycleServices.map(service => (
+              <li key={service.id} className="p-4 sm:p-6 hover:bg-background-light dark:hover:bg-background-dark transition-colors duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-base font-semibold text-text-primary-light dark:text-text-primary-dark truncate">{service.name}</h4>
+                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1 truncate">
+                      {service.description || 'No description available.'}
+                    </p>
+                  </div>
+                  <div className="flex items-baseline gap-4 mt-4 sm:mt-0 sm:ml-6">
+                    <div className="flex flex-col text-right">
+                      <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">Small</span>
+                      <span className="font-semibold text-text-primary-light dark:text-text-primary-dark">
+                        ₱{(service.pricing as MotorcycleSizePricing)?.small ?? 'N/A'}
+                      </span>
                     </div>
-                  </li>
-                )) : (
+                     <div className="flex flex-col text-right">
+                      <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">Large</span>
+                      <span className="font-semibold text-text-primary-light dark:text-text-primary-dark">
+                        ₱{(service.pricing as MotorcycleSizePricing)?.large ?? 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEditClick(service)}
+                        className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        title="Edit Service"
+                      >
+                        <Edit2 className="h-4 w-4 text-gray-500" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(service)}
+                        className="p-2 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                        title="Delete Service"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            )) : (
                   <li className="p-4 text-center text-text-secondary-light dark:text-text-secondary-dark">No motorcycle services found.</li>
                 )}
               </ul>
@@ -461,8 +461,8 @@ const MotorcycleServicesPage: React.FC = () => {
                         <h4 className="text-base font-semibold text-text-primary-light dark:text-text-primary-dark truncate">{pkg.name}</h4>
                         <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1 truncate">
                           {pkg.description || 'No description available.'}
-                        </p>
-                      </div>
+                </p>
+              </div>
                       <div className="flex items-baseline gap-4 mt-4 sm:mt-0 sm:ml-6">
                         <div className="flex items-center gap-2">
                           <button
@@ -485,9 +485,9 @@ const MotorcycleServicesPage: React.FC = () => {
                   </li>
                 )) : (
                   <li className="p-4 text-center text-text-secondary-light dark:text-text-secondary-dark">No motorcycle packages found.</li>
-                )}
-              </ul>
-            </div>
+            )}
+          </ul>
+        </div>
           </div>
         )}
       </div>

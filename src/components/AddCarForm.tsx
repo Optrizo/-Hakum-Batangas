@@ -165,20 +165,6 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       }
     }
 
-    // Services validation
-    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
-      newErrors.services = 'Please select at least one service or package to add the vehicle to the queue';
-    }
-
-    // Total cost validation
-    if (manualTotalCost !== '' && isNaN(Number(manualTotalCost))) {
-      newErrors.total_cost = 'Total cost must be a valid number';
-    } else if (manualTotalCost !== '' && Number(manualTotalCost) < 0) {
-      newErrors.total_cost = 'Total cost cannot be negative';
-    } else if (manualTotalCost !== '' && Number(manualTotalCost) > 100000) {
-      newErrors.total_cost = 'Total cost seems unusually high. Please verify the amount.';
-    }
-
     // Size validation
     if (!formData.size || !['small', 'medium', 'large', 'extra_large'].includes(formData.size)) {
       newErrors.size = 'Please select a valid car size';

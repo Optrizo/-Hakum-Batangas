@@ -62,6 +62,7 @@ export interface Car {
   total_cost: number;
   created_at: string;
   updated_at: string;
+  is_deleted?: boolean;
 }
 
 export interface Motor {
@@ -78,6 +79,7 @@ export interface Motor {
   vehicle_type: 'motorcycle';
   created_at: string;
   updated_at: string;
+  is_deleted?: boolean;
 }
 
 export const CAR_SIZES: { label: string; value: CarSize }[] = [

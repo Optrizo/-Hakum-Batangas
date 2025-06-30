@@ -184,15 +184,13 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
     validateServicesAndPackages(formData.selectedServices, newSelectedPackages);
   };
   
-  const validateServicesAndPackages = (services: string[], packages: string[]) => {
-    if (services.length === 0 && packages.length === 0) {
-      setErrors(prev => ({ ...prev, services: 'Please select at least one service or package.' }));
-    } else {
-      setErrors(prev => {
-        const { services: _, ...rest } = prev;
-        return rest;
-      });
-    }
+  const validateServicesAndPackages = (_services: string[], _packages: string[]) => {
+    // Services and packages are now optional - no validation required
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.services;
+      return newErrors;
+    });
   };
 
   const handleCrewToggle = (crewId: string) => {
@@ -274,14 +272,12 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
       if (!phoneResult.isValid) newErrors.phone = phoneResult.error!;
     }
 
-    // Validate services/packages
-    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
-      newErrors.services = 'Please select at least one service or package.';
-    }
-
+    // Validate crew if status is 'in-progress'
     if (formData.status === 'in-progress' && formData.crew.length === 0 && !hasPackageSelected) {
       newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
     }
+
+    // Services and packages are now optional - no validation required
 
     setErrors(newErrors);
     setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the errors below.' : null);
@@ -470,49 +466,62 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
           {/* Services */}
           <div>
             <label className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-2">
               Services
             </label>
-            <div className="max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-2 border border-border-light dark:border-border-dark">
-              {motorcycleServices.map(service => (
-                <label key={service.id} className="flex items-center justify-between cursor-pointer p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800">
-                  <div>
-                    <input
-                      type="checkbox"
-                      checked={formData.selectedServices.includes(service.id)}
-                      onChange={() => handleServiceToggle(service.id)}
-                      className="form-checkbox h-4 w-4 text-brand-blue bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark rounded focus:ring-brand-blue"
-                    />
-                    <span className="ml-2 text-sm text-text-primary-light dark:text-text-primary-dark">{service.name}</span>
-                  </div>
-                  <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">₱{servicePrices[service.id] || 0}</span>
-                </label>
-              ))}
+            <div className="max-h-48 sm:max-h-56 md:max-h-64 lg:max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-3 border border-border-light dark:border-border-dark">
+              {motorcycleServices.length === 0 ? (
+                <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark italic py-2">
+                  No services available
+                </p>
+              ) : (
+                motorcycleServices.map(service => (
+                  <label key={service.id} className="flex items-center justify-between cursor-pointer p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+                    <div className="flex items-center min-w-0 flex-1">
+                      <input
+                        type="checkbox"
+                        checked={formData.selectedServices.includes(service.id)}
+                        onChange={() => handleServiceToggle(service.id)}
+                        className="form-checkbox h-4 w-4 text-brand-blue bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark rounded focus:ring-brand-blue flex-shrink-0"
+                      />
+                      <span className="ml-2 text-sm text-text-primary-light dark:text-text-primary-dark truncate">{service.name}</span>
+                    </div>
+                    <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark font-medium ml-2 flex-shrink-0">₱{servicePrices[service.id] || 0}</span>
+                  </label>
+                ))
+              )}
             </div>
           </div>
+          
           {/* Packages */}
           <div>
             <label className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-2">
               Packages
             </label>
-            <div className="max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-2 border border-border-light dark:border-border-dark">
-              {motorcyclePackages.map(pkg => (
-                <label key={pkg.id} className="flex items-center justify-between cursor-pointer p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800">
-                  <div>
-                    <input
-                      type="checkbox"
-                      checked={formData.selectedPackages.includes(pkg.id)}
-                      onChange={() => handlePackageToggle(pkg.id)}
-                      className="form-checkbox h-4 w-4 text-brand-blue bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark rounded focus:ring-brand-blue"
-                    />
-                    <span className="ml-2 text-sm text-text-primary-light dark:text-text-primary-dark">{pkg.name}</span>
-                  </div>
-                  <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">₱{packagePrices[pkg.id] || 0}</span>
-                </label>
-              ))}
+            <div className="max-h-48 sm:max-h-56 md:max-h-64 lg:max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-3 border border-border-light dark:border-border-dark">
+              {motorcyclePackages.length === 0 ? (
+                <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark italic py-2">
+                  No packages available
+                </p>
+              ) : (
+                motorcyclePackages.map(pkg => (
+                  <label key={pkg.id} className="flex items-center justify-between cursor-pointer p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+                    <div className="flex items-center min-w-0 flex-1">
+                      <input
+                        type="checkbox"
+                        checked={formData.selectedPackages.includes(pkg.id)}
+                        onChange={() => handlePackageToggle(pkg.id)}
+                        className="form-checkbox h-4 w-4 text-brand-blue bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark rounded focus:ring-brand-blue flex-shrink-0"
+                      />
+                      <span className="ml-2 text-sm text-text-primary-light dark:text-text-primary-dark truncate">{pkg.name}</span>
+                    </div>
+                    <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark font-medium ml-2 flex-shrink-0">₱{packagePrices[pkg.id] || 0}</span>
+                  </label>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -524,7 +533,7 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
           <label className="block text-lg font-bold mb-2 text-gray-800 dark:text-white">Assign Crew</label>
           <div className="p-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
             <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsCrewOpen(!isCrewOpen)}>
-              <span className="font-medium text-gray-700 dark:text-gray-200">
+              <span className="font-medium text-gray-700 dark:text-gray-200 text-sm sm:text-base">
                 {formData.crew.length > 0
                   ? crews.filter(c => formData.crew.includes(c.id)).map(c => c.name).join(', ')
                   : 'Select Crew...'}
@@ -532,20 +541,20 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
               <svg className={`w-5 h-5 text-gray-500 transition-transform ${isCrewOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
             {isCrewOpen && (
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-2 sm:space-y-3">
                 {crews.map((crewMember) => (
                   <label 
                     key={crewMember.id} 
-                    className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                    className="flex items-center justify-between p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
-                    <div className="flex items-center">
+                    <div className="flex items-center min-w-0 flex-1">
                       <input
                         type="checkbox"
                         checked={formData.crew.includes(crewMember.id)}
                         onChange={() => handleCrewToggle(crewMember.id)}
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
                       />
-                      <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200">{crewMember.name}</span>
+                      <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200 truncate">{crewMember.name}</span>
                     </div>
                   </label>
                 ))}

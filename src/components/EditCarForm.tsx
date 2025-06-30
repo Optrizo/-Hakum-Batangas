@@ -69,8 +69,6 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
   const [packagePrices, setPackagePrices] = useState<Record<string, number>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isServicesOpen, setIsServicesOpen] = useState(false);
-  const [isPackagesOpen, setIsPackagesOpen] = useState(false);
   const [isCrewOpen, setIsCrewOpen] = useState(false);
   const [totalCost, setTotalCost] = useState(car.total_cost || 0);
   const [isCostOverridden, setIsCostOverridden] = useState(false);
@@ -160,9 +158,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
       newErrors.crew = 'Assign at least one crew member for cars "In Progress".';
     }
 
-    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
-      newErrors.services = 'Please select at least one service or package.';
-    }
+    // Services and packages are now optional - no validation required
 
     setErrors(newErrors);
     setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the errors below.' : null);
@@ -200,23 +196,23 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
     validateField(name, value);
   };
   
-  const validateField = (name: string, value: any) => {
+  const validateField = (name: string, value: unknown) => {
     let result;
     switch (name) {
       case 'plate':
-        result = validateLicensePlate(value);
+        result = validateLicensePlate(value as string);
         break;
       case 'model':
-        result = validateCarModel(value);
+        result = validateCarModel(value as string);
         break;
       case 'phone':
-        result = validatePhoneNumber(value);
+        result = validatePhoneNumber(value as string);
         break;
       case 'size':
-        result = validateCarSize(value);
+        result = validateCarSize(value as string);
         break;
       case 'status':
-        result = validateServiceStatus(value);
+        result = validateServiceStatus(value as string);
         break;
       case 'total_cost':
         result = validateCost(totalCost);
@@ -229,8 +225,9 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
       setErrors(prev => ({ ...prev, [name]: result.error! }));
     } else {
       setErrors(prev => {
-        const { [name]: _, ...rest } = prev;
-        return rest;
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
       });
     }
   };
@@ -244,7 +241,6 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
       ...prev,
       selectedServices: newSelectedServices
     }));
-    validateServicesAndPackages(newSelectedServices, formData.selectedPackages);
   };
 
   const handlePackageToggle = (packageId: string) => {
@@ -257,18 +253,6 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
       selectedPackages: newSelectedPackages,
       crew: newSelectedPackages.length > 0 ? [] : prev.crew,
     }));
-    validateServicesAndPackages(formData.selectedServices, newSelectedPackages);
-  };
-  
-  const validateServicesAndPackages = (services: string[], packages: string[]) => {
-    if (services.length === 0 && packages.length === 0) {
-      setErrors(prev => ({ ...prev, services: 'Please select at least one service or package.' }));
-    } else {
-      setErrors(prev => {
-        const { services: _, ...rest } = prev;
-        return rest;
-      });
-    }
   };
 
   const handleCrewToggle = (crewId: string) => {
@@ -290,8 +274,6 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
     setIsSubmitting(true);
     try {
       const allSelectedServiceIds = [...formData.selectedServices, ...formData.selectedPackages];
-      const selectedServices = carServices.filter(s => formData.selectedServices.includes(s.id));
-      const selectedPackages = carPackages.filter(p => formData.selectedPackages.includes(p.id));
       const selectedServiceNames = formData.selectedServices.map(id => {
         const service = carServices.find(s => s.id === id);
         return service?.name || '';
@@ -499,64 +481,77 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
             Services & Packages <span className="text-gray-500 text-xs">(Optional)</span>
           </h4>
           <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
-            Select or modify the services and packages for this vehicle
+            Select or modify the services and packages for this vehicle. Both are optional.
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
           {/* Services */}
           <div>
             <label className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-2">
-            Services
-          </label>
-            <div className="max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-2 border border-border-light dark:border-border-dark">
-              {carServices.map(service => (
-                <label key={service.id} className="flex items-center justify-between cursor-pointer p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800">
-                  <div>
-                          <input
-                            type="checkbox"
-                            checked={formData.selectedServices.includes(service.id)}
-                            onChange={() => handleServiceToggle(service.id)}
-                      className="form-checkbox h-4 w-4 text-brand-blue bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark rounded focus:ring-brand-blue"
-                          />
-                    <span className="ml-2 text-sm text-text-primary-light dark:text-text-primary-dark">{service.name}</span>
-                          </div>
-                  <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">₱{servicePrices[service.id] || 0}</span>
-                </label>
-              ))}
-              </div>
+              Services
+            </label>
+            <div className="max-h-48 sm:max-h-56 md:max-h-64 lg:max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-3 border border-border-light dark:border-border-dark">
+              {carServices.length === 0 ? (
+                <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark italic py-2">
+                  No services available
+                </p>
+              ) : (
+                carServices.map(service => (
+                  <label key={service.id} className="flex items-center justify-between cursor-pointer p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+                    <div className="flex items-center min-w-0 flex-1">
+                      <input
+                        type="checkbox"
+                        checked={formData.selectedServices.includes(service.id)}
+                        onChange={() => handleServiceToggle(service.id)}
+                        className="form-checkbox h-4 w-4 text-brand-blue bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark rounded focus:ring-brand-blue flex-shrink-0"
+                      />
+                      <span className="ml-2 text-sm text-text-primary-light dark:text-text-primary-dark truncate">{service.name}</span>
+                    </div>
+                    <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark font-medium ml-2 flex-shrink-0">₱{servicePrices[service.id] || 0}</span>
+                  </label>
+                ))
+              )}
+            </div>
           </div>
+          
           {/* Packages */}
           <div>
             <label className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-2">
               Packages
-          </label>
-            <div className="max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-2 border border-border-light dark:border-border-dark">
-              {carPackages.map(pkg => (
-                 <label key={pkg.id} className="flex items-center justify-between cursor-pointer p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800">
-                   <div>
-                          <input
-                            type="checkbox"
-                            checked={formData.selectedPackages.includes(pkg.id)}
-                            onChange={() => handlePackageToggle(pkg.id)}
-                      className="form-checkbox h-4 w-4 text-brand-blue bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark rounded focus:ring-brand-blue"
-                          />
-                    <span className="ml-2 text-sm text-text-primary-light dark:text-text-primary-dark">{pkg.name}</span>
-                          </div>
-                   <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">₱{packagePrices[pkg.id] || 0}</span>
-                 </label>
-              ))}
-              </div>
-          </div>
+            </label>
+            <div className="max-h-48 sm:max-h-56 md:max-h-64 lg:max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-3 border border-border-light dark:border-border-dark">
+              {carPackages.length === 0 ? (
+                <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark italic py-2">
+                  No packages available
+                </p>
+              ) : (
+                carPackages.map(pkg => (
+                  <label key={pkg.id} className="flex items-center justify-between cursor-pointer p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+                    <div className="flex items-center min-w-0 flex-1">
+                      <input
+                        type="checkbox"
+                        checked={formData.selectedPackages.includes(pkg.id)}
+                        onChange={() => handlePackageToggle(pkg.id)}
+                        className="form-checkbox h-4 w-4 text-brand-blue bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark rounded focus:ring-brand-blue flex-shrink-0"
+                      />
+                      <span className="ml-2 text-sm text-text-primary-light dark:text-text-primary-dark truncate">{pkg.name}</span>
+                    </div>
+                    <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark font-medium ml-2 flex-shrink-0">₱{packagePrices[pkg.id] || 0}</span>
+                  </label>
+                ))
+              )}
+            </div>
           </div>
         </div>
+      </div>
 
       {!hasPackageSelected && (
         <div className="mb-6">
           <label className="block text-lg font-bold mb-2 text-gray-800 dark:text-white">Assign Crew</label>
           <div className="p-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
             <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsCrewOpen(!isCrewOpen)}>
-              <span className="font-medium text-gray-700 dark:text-gray-200">
+              <span className="font-medium text-gray-700 dark:text-gray-200 text-sm sm:text-base">
                 {formData.crew.length > 0
                   ? formData.crew.map(id => crews.find(c => c.id === id)?.name).join(', ')
                   : 'Select Crew...'}
@@ -564,26 +559,26 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
               <svg className={`w-5 h-5 text-gray-500 transition-transform ${isCrewOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
             {isCrewOpen && (
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-2 sm:space-y-3">
                 {crews.map((crewMember) => {
                   const isBusy = busyCrewIds.has(crewMember.id);
                   return (
                     <label 
                       key={crewMember.id} 
-                      className={`flex items-center justify-between p-3 rounded-lg transition-colors ${isBusy ? 'cursor-not-allowed bg-gray-200 dark:bg-gray-600 opacity-70' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                      className={`flex items-center justify-between p-2 sm:p-3 rounded-lg transition-colors ${isBusy ? 'cursor-not-allowed bg-gray-200 dark:bg-gray-600 opacity-70' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                     >
-                      <div className="flex items-center">
+                      <div className="flex items-center min-w-0 flex-1">
                         <input
                           type="checkbox"
                           checked={formData.crew.includes(crewMember.id)}
                           onChange={() => !isBusy && handleCrewToggle(crewMember.id)}
                           disabled={isBusy}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
                         />
-                        <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200">{crewMember.name}</span>
+                        <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200 truncate">{crewMember.name}</span>
                       </div>
                       {isBusy && (
-                        <span className="text-xs font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">Busy</span>
+                        <span className="text-xs font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full flex-shrink-0 ml-2">Busy</span>
                       )}
                     </label>
                   );
