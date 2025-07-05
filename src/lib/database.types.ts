@@ -60,6 +60,7 @@ export interface Database {
           price: number
           description: string | null
           pricing: Json | null
+          vehicle_type: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -69,6 +70,7 @@ export interface Database {
           price?: number
           description?: string | null
           pricing?: Json | null
+          vehicle_type?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -78,6 +80,7 @@ export interface Database {
           price?: number
           description?: string | null
           pricing?: Json | null
+          vehicle_type?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -119,6 +122,7 @@ export interface Database {
           service_ids: string[] | null
           pricing: Json | null
           is_active: boolean | null
+          vehicle_type: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -129,6 +133,7 @@ export interface Database {
           service_ids?: string[] | null
           pricing?: Json | null
           is_active?: boolean | null
+          vehicle_type?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -139,6 +144,7 @@ export interface Database {
           service_ids?: string[] | null
           pricing?: Json | null
           is_active?: boolean | null
+          vehicle_type?: string | null
           created_at?: string | null
           updated_at?: string | null
         }

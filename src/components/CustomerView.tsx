@@ -106,7 +106,7 @@ const CustomerView: React.FC = () => {
           // Split by comma for multiple services
           const services = car.service.split(',').map(s => s.trim()).filter(Boolean);
           badgeNames.push(...services);
-        }
+      }
       }
 
       if (badgeNames.length === 0) return null;
@@ -136,8 +136,8 @@ const CustomerView: React.FC = () => {
         <div className="flex flex-row items-start justify-between w-full">
           {/* Left part of top section: Icon, Plate, Model */}
           <div className="flex items-center gap-3">
-            {isMotorcycle ? 
-              <BikeIcon className={`h-6 w-6 ${textSecondary} flex-shrink-0`} /> : 
+            {isMotorcycle ?
+              <BikeIcon className={`h-6 w-6 ${textSecondary} flex-shrink-0`} /> :
               <CarIcon className={`h-6 w-6 ${textSecondary} flex-shrink-0`} />
             }
             <div>
@@ -151,7 +151,7 @@ const CustomerView: React.FC = () => {
               <p className={`text-[0.8em] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Crew:</p>
               {crewMembers.map(name => (
                 <span key={name} className={`
-                  ${isDark ? 'bg-gray-700 text-gray-200' : 'bg-blue-100 text-blue-900'} 
+                  ${isDark ? 'bg-gray-700 text-gray-200' : 'bg-blue-100 text-blue-900'}
                   text-[0.8em] font-bold px-2 py-0.5 rounded-full shadow-sm
                   ${!isDark ? 'border border-blue-200' : ''}
                 `}>{name}</span>
@@ -162,7 +162,7 @@ const CustomerView: React.FC = () => {
 
         {/* Bottom section: Service Badges */}
         <div className="flex flex-wrap items-center gap-2 mt-4 w-full">
-          {getServiceDisplay()}
+            {getServiceDisplay()}
         </div>
       </div>
     );

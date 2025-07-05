@@ -28,10 +28,9 @@ const ServicesPage: React.FC = () => {
     serviceFormStateRef.current = data;
     setServiceFormData(data);
   };
-  const packageFormStateRef = useRef({ name: '', description: '', service_ids: [], pricing: { small: 0, medium: 0, large: 0, extra_large: 0 } });
-  const [packageFormData, setPackageFormData] = useState({ name: '', description: '', service_ids: [], pricing: { small: 0, medium: 0, large: 0, extra_large: 0 } });
+  const packageFormStateRef = useRef({ name: '', description: '', service_ids: [], pricing: { small: 0, medium: 0, large: 0, extra_large: 0 }, vehicle_type: 'car' });
+  const [packageFormData, setPackageFormData] = useState({ name: '', description: '', service_ids: [], pricing: { small: 0, medium: 0, large: 0, extra_large: 0 }, vehicle_type: 'car' });
   const setPackageFormDataPersist = (data: typeof packageFormData) => {
-    packageFormStateRef.current = data;
     setPackageFormData(data);
   };
 
@@ -51,7 +50,8 @@ const ServicesPage: React.FC = () => {
       name: '',
       description: '',
       service_ids: [],
-      pricing: { small: 0, medium: 0, large: 0, extra_large: 0 }
+      pricing: { small: 0, medium: 0, large: 0, extra_large: 0 },
+      vehicle_type: 'car',
     });
     setEditingPackage(null);
     setShowAddForm(false);
@@ -124,6 +124,7 @@ const ServicesPage: React.FC = () => {
         service_ids: packageFormData.service_ids,
         pricing: packageFormData.pricing,
         is_active: true,
+        vehicle_type: 'car',
       };
 
       if (editingPackage) {
@@ -159,6 +160,7 @@ const ServicesPage: React.FC = () => {
       description: pkg.description || '',
       service_ids: pkg.service_ids || [],
       pricing: pkg.pricing || { small: 0, medium: 0, large: 0, extra_large: 0 },
+      vehicle_type: 'car',
     });
     setActiveTab('packages');
     setShowAddForm(false);
@@ -408,6 +410,8 @@ const ServicesPage: React.FC = () => {
     </form>
   ), [packageFormData, editingPackage, services]);
 
+  const carPackages = packages.filter(p => p.vehicle_type === 'car');
+
   return (
     <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 xl:p-8">
       <div className="max-w-7xl mx-auto">
@@ -421,7 +425,7 @@ const ServicesPage: React.FC = () => {
         </div>
           <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
             <div className="text-xs sm:text-sm text-text-secondary-light dark:text-text-secondary-dark">
-              <span className="font-medium">{services.length}</span> Services, <span className="font-medium">{packages.length}</span> Packages
+              <span className="font-medium">{services.length}</span> Services, <span className="font-medium">{carPackages.length}</span> Packages
             </div>
         {!showAddForm && !editingService && !editingPackage && (
           <button
@@ -467,7 +471,7 @@ const ServicesPage: React.FC = () => {
                 <Package className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span>Packages</span>
                 <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full">
-                  {packages.length}
+                  {carPackages.length}
                 </span>
               </div>
           </button>
@@ -490,7 +494,7 @@ const ServicesPage: React.FC = () => {
         )}
         {activeTab === 'packages' && (
             <PackageList 
-              packages={packages} 
+              packages={carPackages} 
               services={services} 
               onEdit={handleEditPackage} 
               onDelete={handleDeletePackage} 

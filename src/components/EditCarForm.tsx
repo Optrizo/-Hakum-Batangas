@@ -131,7 +131,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
       const trimmedPlate = formData.plate.trim().toUpperCase();
       const isDuplicate = cars.some(
         c => c.id !== car.id &&
-             c.plate.trim().toUpperCase() === trimmedPlate &&
+             c.plate.trim().toUpperCase() === trimmedPlate && 
              (c.status === 'waiting' || c.status === 'in-progress')
       );
       if (isDuplicate) {
@@ -489,8 +489,8 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
           {/* Services */}
           <div>
             <label className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-2">
-              Services
-            </label>
+            Services
+          </label>
             <div className="max-h-48 sm:max-h-56 md:max-h-64 lg:max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-3 border border-border-light dark:border-border-dark">
               {carServices.length === 0 ? (
                 <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark italic py-2">
@@ -500,26 +500,26 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
                 carServices.map(service => (
                   <label key={service.id} className="flex items-center justify-between cursor-pointer p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
                     <div className="flex items-center min-w-0 flex-1">
-                      <input
-                        type="checkbox"
-                        checked={formData.selectedServices.includes(service.id)}
-                        onChange={() => handleServiceToggle(service.id)}
+                          <input
+                            type="checkbox"
+                            checked={formData.selectedServices.includes(service.id)}
+                            onChange={() => handleServiceToggle(service.id)}
                         className="form-checkbox h-4 w-4 text-brand-blue bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark rounded focus:ring-brand-blue flex-shrink-0"
-                      />
+                          />
                       <span className="ml-2 text-sm text-text-primary-light dark:text-text-primary-dark truncate">{service.name}</span>
-                    </div>
+                          </div>
                     <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark font-medium ml-2 flex-shrink-0">₱{servicePrices[service.id] || 0}</span>
-                  </label>
+                </label>
                 ))
               )}
-            </div>
+              </div>
           </div>
           
           {/* Packages */}
           <div>
             <label className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-2">
               Packages
-            </label>
+          </label>
             <div className="max-h-48 sm:max-h-56 md:max-h-64 lg:max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-3 border border-border-light dark:border-border-dark">
               {carPackages.length === 0 ? (
                 <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark italic py-2">
@@ -529,22 +529,22 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
                 carPackages.map(pkg => (
                   <label key={pkg.id} className="flex items-center justify-between cursor-pointer p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
                     <div className="flex items-center min-w-0 flex-1">
-                      <input
-                        type="checkbox"
-                        checked={formData.selectedPackages.includes(pkg.id)}
-                        onChange={() => handlePackageToggle(pkg.id)}
+                          <input
+                            type="checkbox"
+                            checked={formData.selectedPackages.includes(pkg.id)}
+                            onChange={() => handlePackageToggle(pkg.id)}
                         className="form-checkbox h-4 w-4 text-brand-blue bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark rounded focus:ring-brand-blue flex-shrink-0"
-                      />
+                          />
                       <span className="ml-2 text-sm text-text-primary-light dark:text-text-primary-dark truncate">{pkg.name}</span>
-                    </div>
+                          </div>
                     <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark font-medium ml-2 flex-shrink-0">₱{packagePrices[pkg.id] || 0}</span>
-                  </label>
+                 </label>
                 ))
               )}
-            </div>
+              </div>
+          </div>
           </div>
         </div>
-      </div>
 
       {!hasPackageSelected && (
         <div className="mb-6">

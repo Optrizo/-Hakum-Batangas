@@ -14,6 +14,8 @@ const emptyPackage: Omit<ServicePackage, 'id' | 'created_at' | 'updated_at'> = {
   name: '',
   description: '',
   vehicle_type: 'motorcycle',
+  pricing: { small: 0, large: 0 },
+  service_ids: [],
 };
 
 const MotorcycleServicesPage: React.FC = () => {
@@ -53,6 +55,8 @@ const MotorcycleServicesPage: React.FC = () => {
         name: editingPackage.name,
         description: editingPackage.description || '',
         vehicle_type: 'motorcycle',
+        pricing: editingPackage.pricing || { small: 0, large: 0 },
+        service_ids: editingPackage.service_ids || [],
       });
       setShowPackageForm(true);
     } else {
@@ -138,6 +142,54 @@ const MotorcycleServicesPage: React.FC = () => {
       console.error('Failed to save service', error);
       const message = error instanceof Error ? error.message : 'An unknown error occurred.';
       setFormError(`Failed to save service: ${message}`);
+    }
+  };
+
+  const handlePackageSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+
+    if (!packageFormData.name.trim()) {
+      setFormError('Package name is required.');
+      return;
+    }
+    if ((packageFormData.pricing?.small || 0) <= 0 && (packageFormData.pricing?.large || 0) <= 0) {
+      setFormError('At least one price (Small or Large) must be greater than zero.');
+      return;
+    }
+
+    try {
+      const packageData = {
+        ...packageFormData,
+        name: packageFormData.name.trim(),
+        description: packageFormData.description?.trim() || undefined,
+        vehicle_type: 'motorcycle',
+      };
+
+      if (editingPackage) {
+        await updatePackage(editingPackage.id, packageData);
+      } else {
+        await addPackage(packageData);
+      }
+      handleCancel();
+    } catch (error) {
+      console.error('Failed to save package', error);
+      const message = error instanceof Error ? error.message : 'An unknown error occurred.';
+      setFormError(`Failed to save package: ${message}`);
+    }
+  };
+
+  const handleDeletePackageClick = async (pkg: ServicePackage) => {
+    if (window.confirm(`Are you sure you want to delete the package "${pkg.name}"? This action cannot be undone.`)) {
+      try {
+        await deletePackage(pkg.id);
+        if (editingPackage?.id === pkg.id) {
+          handleCancel();
+        }
+      } catch (error) {
+        console.error('Failed to delete package:', error);
+        alert(`Error: ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
+      }
     }
   };
 
@@ -304,7 +356,7 @@ const MotorcycleServicesPage: React.FC = () => {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form onSubmit={handlePackageSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <label htmlFor="name" className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1">
                   Name <span className="text-red-500">*</span>
@@ -473,7 +525,7 @@ const MotorcycleServicesPage: React.FC = () => {
                             <Edit2 className="h-4 w-4 text-gray-500" />
                           </button>
                           <button
-                            onClick={() => handleDeleteClick(pkg)}
+                            onClick={() => handleDeletePackageClick(pkg)}
                             className="p-2 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                             title="Delete Package"
                           >

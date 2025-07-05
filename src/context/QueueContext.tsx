@@ -140,6 +140,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { data, error } = await supabase
         .from('services')
         .select('*')
+        .eq('is_deleted', false)
         .order('name', { ascending: true });
 
       if (error) {
@@ -166,6 +167,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .from('crew_members')
         .select('*')
         .eq('is_active', true)
+        .eq('is_deleted', false)
         .order('name', { ascending: true });
 
       if (error) {
@@ -185,20 +187,18 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const fetchPackages = useCallback(async () => {
     if (isOperationActive('packages-fetch')) return;
-    
     try {
       addActiveOperation('packages-fetch');
       const { data, error } = await supabase
         .from('service_packages')
         .select('*')
         .eq('is_active', true)
+        .eq('is_deleted', false)
         .order('name', { ascending: true });
-
       if (error) {
         console.error('Supabase error fetching packages:', error);
         throw error;
       }
-      
       setPackages(data || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
@@ -725,7 +725,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       addActiveOperation(operationId);
       const { error } = await supabase
         .from('crew_members')
-        .delete()
+        .update({ is_deleted: true })
         .eq('id', id);
         
       if (error) {
@@ -793,7 +793,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       addActiveOperation('service-operation');
       const { error } = await supabase
         .from('services')
-        .delete()
+        .update({ is_deleted: true })
         .eq('id', id);
 
       if (error) {
@@ -861,7 +861,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       addActiveOperation('package-operation');
       const { error } = await supabase
         .from('service_packages')
-        .delete()
+        .update({ is_deleted: true })
         .eq('id', id);
 
       if (error) {
