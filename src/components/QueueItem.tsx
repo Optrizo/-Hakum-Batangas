@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQueue } from '../context/QueueContext';
-import { Car, Motor } from '../types';
+import { Car, Motor, ServiceStatus } from '../types';
 import StatusBadge from './StatusBadge';
 import { Edit2, Trash2, Check, X, DollarSign, CheckCircle, Wrench as Tool, Users, XCircle, ChevronDown } from 'lucide-react';
 import EditCarForm from './EditCarForm';
 import EditMotorcycleForm from './EditMotorcycleForm';
+// @ts-ignore
+import { sendSMS } from '../../MyBusyBee/scripts/busybee-sms.js';
 
 interface QueueItemProps {
   vehicle: Car | Motor;
@@ -34,7 +36,6 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
     return vehicle.services.some(serviceId => packageIds.has(serviceId));
   }, [vehicle, packages, isMotorcycle]);
 
-  const updateVehicle = isMotorcycle ? updateMotorcycle : updateCar;
   const removeVehicle = isMotorcycle ? removeMotorcycle : removeCar;
 
   const busyCrewIds = useMemo(() => {
@@ -122,10 +123,51 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
     }
     try {
       setIsUpdating(true);
-      await updateVehicle(vehicle.id, { 
-        status: newStatus,
-        updated_at: new Date().toISOString()
-      });
+      if (isMotorcycle) {
+        const updates: Partial<Motor> = {
+          status: newStatus as ServiceStatus,
+          updated_at: new Date().toISOString(),
+        };
+        await updateMotorcycle(vehicle.id, updates);
+      } else {
+        const updates: Partial<Car> = {
+          status: newStatus as ServiceStatus,
+          updated_at: new Date().toISOString(),
+        };
+        await updateCar(vehicle.id, updates);
+      }
+      // Integration: Send SMS if status is completed
+      if (newStatus === 'completed') {
+        // Determine service type string
+        let serviceType = '';
+        if ('vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle') {
+          // For motorcycles, join service names and package name
+          const serviceNames = (vehicle.services || []).map(id => {
+            const s = services.find(s => s.id === id);
+            return s ? s.name : '';
+          }).filter(Boolean);
+          let packageName = '';
+          if (vehicle.package) {
+            const pkg = packages.find(p => p.id === vehicle.package || p.name === vehicle.package);
+            if (pkg) packageName = pkg.name;
+          }
+          serviceType = [...serviceNames, packageName].filter(Boolean).join(', ');
+        } else {
+          // For cars, use the service string
+          serviceType = (vehicle as Car).service || '';
+        }
+        // Call backend API to send SMS
+        await fetch('/api/send-sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'completed',
+            plateNumber: vehicle.plate,
+            serviceType,
+            phoneNumber: vehicle.phone
+          })
+        });
+      }
       setIsAssigningCrew(false);
     } catch (error) {
       console.error('Error updating status:', error);
@@ -169,18 +211,25 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
   const handleAssignCrew = async () => {
     try {
       setIsUpdating(true);
-
-      const updates: Partial<Car | Motor> = {
-        crew: selectedCrewIds,
-        updated_at: new Date().toISOString()
-      };
-
-      if (vehicle.status === 'waiting' && selectedCrewIds.length > 0) {
-        updates.status = 'in-progress';
+      if (isMotorcycle) {
+        const updates: Partial<Motor> = {
+          crew: selectedCrewIds,
+          updated_at: new Date().toISOString(),
+        };
+        if (vehicle.status === 'waiting' && selectedCrewIds.length > 0) {
+          updates.status = 'in-progress';
+        }
+        await updateMotorcycle(vehicle.id, updates);
+      } else {
+        const updates: Partial<Car> = {
+          crew: selectedCrewIds,
+          updated_at: new Date().toISOString(),
+        };
+        if (vehicle.status === 'waiting' && selectedCrewIds.length > 0) {
+          updates.status = 'in-progress';
+        }
+        await updateCar(vehicle.id, updates);
       }
-
-      await updateVehicle(vehicle.id, updates);
-
       setIsAssigningCrew(false);
       setShowCrewWarning(false);
     } catch (error) {
@@ -448,7 +497,12 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
                 )}
               </div>
               <div className="flex items-center gap-2 self-end sm:self-center">
-                <button onClick={() => setIsEditing(true)} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <button 
+                  onClick={() => setIsEditing(true)} 
+                  className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  title="Edit Vehicle"
+                  aria-label="Edit Vehicle"
+                >
                   <Edit2 className="h-4 w-4 text-gray-500" />
                 </button>
             <button

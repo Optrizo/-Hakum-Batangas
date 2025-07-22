@@ -1,2 +1,6 @@
+VITE_Api_Key=ljrJYCL46Sbgt0208lneoJ1zim8eR/5z6z/Jqpo3wqM=
+VITE_Client_Id=28b7f868-4032-4d21-abf2-8a6953da8b4b
+VITE_CURL=https://app.brandtxt.io/api/v2/SendSMS
+VITE_SenderID=HAKUM
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlsZGZlbGZwbmNmd29nY3VtYmNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgyMzIyNzcsImV4cCI6MjA2MzgwODI3N30.Q1R621y0SmiUNfZiDv39wx-_G71i9mXS9CdOL2iWzyU
 VITE_SUPABASE_URL=https://ildfelfpncfwogcumbcj.supabase.co
