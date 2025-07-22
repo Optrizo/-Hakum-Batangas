@@ -100,7 +100,9 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
   // Auto-complete car details from history when plate is entered
   useEffect(() => {
     const searchHistory = async () => {
-      if (formData.plate.length >= 3) {
+      // Only trigger if plate is a valid, complete Philippine car plate
+      const platePattern = /^[A-Z]{3}-?\d{3,4}$/;
+      if (platePattern.test(formData.plate.toUpperCase())) {
         console.log(`🚀 Auto-completion triggered for plate: "${formData.plate}"`);
         setIsSearchingHistory(true);
         setAutoFilledFromHistory(false);
