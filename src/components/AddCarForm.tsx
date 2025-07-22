@@ -8,6 +8,9 @@ interface AddCarFormProps {
 
 const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
   const { addCar, services, packages, searchCarHistory, crews, cars } = useQueue();
+  // Add filtering for car services and packages
+  const carServices = useMemo(() => services.filter(s => s.vehicle_type === 'car'), [services]);
+  const carPackages = useMemo(() => packages.filter(p => p.vehicle_type === 'car'), [packages]);
   const [formData, setFormData] = useState({
     plate: '',
     model: '',
@@ -62,20 +65,20 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
 
   useEffect(() => {
     const prices: Record<string, number> = {};
-    services.forEach(service => {
+    carServices.forEach(service => {
       const pricing = service.pricing as SizePricing;
       prices[service.id] = pricing?.[formData.size] || service.price;
     });
     setServicePrices(prices);
-  }, [services, formData.size]);
+  }, [carServices, formData.size]);
 
   useEffect(() => {
     const prices: Record<string, number> = {};
-    packages.forEach(pkg => {
+    carPackages.forEach(pkg => {
       prices[pkg.id] = pkg.pricing[formData.size] || 0;
     });
     setPackagePrices(prices);
-  }, [packages, formData.size]);
+  }, [carPackages, formData.size]);
 
   useEffect(() => {
     const serviceTotal = formData.selectedServices.reduce((sum, serviceId) => {
@@ -268,12 +271,12 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       try {
       // Sanitize and prepare data
         const selectedServiceNames = formData.selectedServices.map(id => {
-          const service = services.find(s => s.id === id);
+          const service = carServices.find(s => s.id === id);
           return service?.name || '';
       }).filter(name => name.length > 0); // Remove empty names
       
         const selectedPackageNames = formData.selectedPackages.map(id => {
-          const pkg = packages.find(p => p.id === id);
+          const pkg = carPackages.find(p => p.id === id);
           return pkg?.name || '';
       }).filter(name => name.length > 0); // Remove empty names
       
@@ -531,7 +534,7 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
               </div>
               {isServicesOpen && (
                 <div className="mt-2 space-y-2 max-h-40 overflow-y-auto pr-2">
-                  {services.map((service) => (
+                  {carServices.map((service) => (
                     <div key={service.id} className="flex items-center justify-between p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">
                       <label htmlFor={`service-${service.id}`} className="flex items-center cursor-pointer flex-grow">
                         <input
@@ -560,7 +563,7 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
               </div>
               {isPackagesOpen && (
                 <div className="mt-2 space-y-2 max-h-40 overflow-y-auto pr-2">
-                  {packages.map((pkg) => (
+                  {carPackages.map((pkg) => (
                     <div key={pkg.id} className="flex items-center justify-between p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">
                       <label htmlFor={`pkg-${pkg.id}`} className="flex items-center cursor-pointer flex-grow">
                         <input
