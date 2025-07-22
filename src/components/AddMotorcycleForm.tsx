@@ -583,7 +583,7 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
             </div>
 
             {/* Crew Selection */}
-            {!hasPackageSelected && (
+            {formData.status !== 'in-progress' && (
               <div className="mb-6">
                 <label className="block text-lg font-bold mb-2 text-gray-800 dark:text-white">Assign Crew</label>
                 <div className="p-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
