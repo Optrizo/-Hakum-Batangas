@@ -224,6 +224,9 @@ const ServicesPage: React.FC = () => {
     }));
   };
 
+  const carServices = services.filter(s => s.vehicle_type === 'car');
+  const carPackages = packages.filter(p => p.vehicle_type === 'car');
+
   // Memoized forms (to prevent re-renders from killing input state)
   const ServiceForm = React.useMemo(() => (
     <form onSubmit={handleServiceSubmit} className="bg-surface-light dark:bg-surface-dark p-4 sm:p-6 rounded-lg shadow-sm border border-border-light dark:border-border-dark mb-6">
@@ -348,7 +351,7 @@ const ServicesPage: React.FC = () => {
             Included Services <span className="text-red-500">*</span>
           </label>
           <div className="max-h-40 overflow-y-auto space-y-2 p-2 border border-border-light dark:border-border-dark rounded-md">
-            {services.map(service => (
+            {carServices.map(service => (
               <div key={service.id} className="flex items-center">
                   <input
                     type="checkbox"
@@ -408,9 +411,7 @@ const ServicesPage: React.FC = () => {
         </button>
       </div>
     </form>
-  ), [packageFormData, editingPackage, services]);
-
-  const carPackages = packages.filter(p => p.vehicle_type === 'car');
+  ), [packageFormData, editingPackage, carServices]);
 
   return (
     <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 xl:p-8">
@@ -425,7 +426,7 @@ const ServicesPage: React.FC = () => {
         </div>
           <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
             <div className="text-xs sm:text-sm text-text-secondary-light dark:text-text-secondary-dark">
-              <span className="font-medium">{services.length}</span> Services, <span className="font-medium">{carPackages.length}</span> Packages
+              <span className="font-medium">{carServices.length}</span> Services, <span className="font-medium">{carPackages.length}</span> Packages
             </div>
         {!showAddForm && !editingService && !editingPackage && (
           <button
@@ -455,7 +456,7 @@ const ServicesPage: React.FC = () => {
                 <Wrench className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span>Services</span>
                 <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full">
-                  {services.length}
+                  {carServices.length}
                 </span>
               </div>
           </button>
@@ -487,7 +488,7 @@ const ServicesPage: React.FC = () => {
         {/* Content */}
         {activeTab === 'services' && (
             <ServiceList 
-              services={services} 
+              services={carServices} 
               onEdit={handleEditService} 
               onDelete={handleDeleteService} 
             />

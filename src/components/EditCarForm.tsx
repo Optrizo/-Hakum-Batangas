@@ -50,8 +50,8 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
   const initialSelectedPackages = initialServices.filter(id => packageIds.has(id));
 
   // Filter car services and packages
-  const carServices = services.filter(s => !s.vehicle_type || s.vehicle_type === 'car');
-  const carPackages = packages.filter(p => !p.vehicle_type || p.vehicle_type === 'car');
+  const carServices = services.filter(s => s.vehicle_type === 'car');
+  const carPackages = packages.filter(p => p.vehicle_type === 'car');
 
   const [formData, setFormData] = useState({
     plate: car.plate,
