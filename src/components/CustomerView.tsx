@@ -3,10 +3,16 @@ import { useQueue } from '../context/QueueContext';
 import { Car, Motor } from '../types';
 import { Car as CarIcon, Bike as BikeIcon } from 'lucide-react';
 import HakumLogoBlue from '/Hakum V2 (Blue).png';
+import { useLocation, Navigate } from 'react-router-dom';
 
 // Rebuilt based on user feedback to be non-scrollable and to correctly display service names.
 
 const CustomerView: React.FC = () => {
+  const location = useLocation();
+  // Kiosk mode: if not on /customer, redirect to /customer
+  if (location.pathname !== '/customer') {
+    return <Navigate to="/customer" replace />;
+  }
   const { cars, motorcycles, services, packages, crews, loading } = useQueue();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [theme, setTheme] = useState(() => localStorage.getItem('customerTheme') || 'dark');
@@ -22,31 +28,6 @@ const CustomerView: React.FC = () => {
       document.body.style.backgroundColor = '';
     };
   }, [theme]);
-
-  useEffect(() => {
-    // Kiosk mode: hide navigation, block route changes
-    if (window.location.pathname === '/customer') {
-      // Hide nav/header/footer if present
-      const nav = document.querySelector('nav');
-      if (nav) nav.style.display = 'none';
-      const header = document.querySelector('header');
-      if (header) header.style.display = 'none';
-      const footer = document.querySelector('footer');
-      if (footer) footer.style.display = 'none';
-      // Block back/forward navigation
-      window.onpopstate = () => {
-        window.location.pathname = '/customer';
-      };
-      // Block programmatic navigation
-      window.addEventListener('hashchange', () => {
-        window.location.pathname = '/customer';
-      });
-    }
-    return () => {
-      window.onpopstate = null;
-      window.removeEventListener('hashchange', () => {});
-    };
-  }, []);
 
   const isDark = theme === 'dark';
   const bgMain = isDark ? 'bg-[#111113]' : 'bg-[#f4f6fa]';
