@@ -38,6 +38,10 @@ const CustomerView: React.FC = () => {
   const textHeader = isDark ? 'text-blue-400' : 'text-blue-700';
   const borderCard = isDark ? 'border border-[#23262f]' : 'border border-blue-100';
 
+  const cardBg = 'transparent';
+  const cardTextColor = isDark ? '#fff' : '#181a20';
+  const overlayOpacity = isDark ? 0.5 : 0.7;
+
   // Correctly find service/package names, falling back to '...' instead of the raw ID.
   const getServiceName = (id: string) => services.find(s => s.id === id)?.name || '...';
   const getPackageName = (id: string) => packages.find(p => p.id === id)?.name || '...';
@@ -80,7 +84,7 @@ const CustomerView: React.FC = () => {
     return 'p-2 text-xs'; // Smaller for many items
   };
 
-  const VehicleCard = ({ vehicle, sizeClass }: { vehicle: Car | Motor, sizeClass: string }) => {
+  const VehicleCard = ({ vehicle, sizeClass, plateColor }: { vehicle: Car | Motor, sizeClass: string, plateColor: string }) => {
     const isMotorcycle = 'vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle';
     const crewMembers = vehicle.crew?.map(id => crews.find(c => c.id === id)?.name).filter(Boolean) || [];
 
@@ -147,7 +151,7 @@ const CustomerView: React.FC = () => {
               <CarIcon className={`h-6 w-6 ${textSecondary} flex-shrink-0`} />
             }
             <div>
-              <p className="text-[1.4em] font-extrabold tracking-wide mb-0.5">{vehicle.plate}</p>
+              <p className="text-[1.4em] font-extrabold tracking-wide mb-0.5" style={{ color: plateColor }}>{vehicle.plate}</p>
               <p className={`text-[0.8em] ${textSecondary}`}>{vehicle.model} ({vehicle.size})</p>
             </div>
           </div>
@@ -174,6 +178,8 @@ const CustomerView: React.FC = () => {
     );
   };
 
+  const bannerUrl = '/Hakum Auto Care Banner 03.png';
+
   if (loading) {
     return (
       <div className={`${bgMain} h-screen w-screen flex items-center justify-center`}>
@@ -183,13 +189,30 @@ const CustomerView: React.FC = () => {
     );
   }
 
+  const plateColor = isDark ? '#fff' : '#181a20';
+
   return (
-    <div className={`${bgMain} flex flex-col font-sans ${textMain} h-screen w-screen p-4 select-none overflow-hidden`}>
+    <div
+      style={{
+        minHeight: '100vh',
+        height: '100vh',
+        overflow: 'hidden',
+        background: `linear-gradient(rgba(24,26,32,${overlayOpacity}), rgba(24,26,32,${overlayOpacity})), url('${bannerUrl}') center center / cover no-repeat`,
+        color: cardTextColor,
+        transition: 'background 0.3s',
+      }}
+      className={`${bgMain} flex flex-col min-h-screen`}
+    >
       {/* HEADER */}
       <header className="flex justify-between items-center mb-2 flex-shrink-0">
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setTheme(isDark ? 'light' : 'dark')} title="Toggle light/dark mode">
           <img src={HakumLogoBlue} alt="Hakum Logo" className="h-8 transition-all duration-300 group-active:scale-95" />
-          <h1 className="text-lg font-bold tracking-wider">HAKUM AUTO CARE</h1>
+          <h1
+            className="text-lg font-bold tracking-wider"
+            style={{ color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.25)' }}
+          >
+            HAKUM AUTO CARE
+          </h1>
         </div>
         <div className="text-right">
           <p className={`text-xl font-bold ${textHeader}`}>LIVE QUEUE</p>
@@ -200,24 +223,70 @@ const CustomerView: React.FC = () => {
           </p>
         </div>
       </header>
-      {/* MAIN CONTENT */}
-      <main className="flex-grow grid grid-cols-3 gap-4 min-h-0">
+      <main
+        className="flex-grow grid grid-cols-3 gap-4 min-h-0"
+        style={{
+          height: '100%',
+          overflow: 'hidden',
+        }}
+      >
         {columns.map(column => {
           const sizeClass = getCardSizeClass(column.vehicles.length);
           return (
-            <div key={column.title} className={`${bgColumn} rounded-lg flex flex-col min-h-0`}>
+            <div
+              key={column.title}
+              className="rounded-lg flex flex-col min-h-0 flex-1"
+              style={{
+                background: cardBg,
+                border: 'none',
+                boxShadow: isDark ? 'none' : '0 2px 16px rgba(24,26,32,0.12)',
+                overflow: 'visible',
+              }}
+            >
               <div className="p-3 flex-shrink-0">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-bold tracking-widest">{column.title}</h2>
+                  <h2
+                    className="text-lg font-bold tracking-widest"
+                    style={{ color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.25)' }}
+                  >
+                    {column.title}
+                  </h2>
                   <span className="bg-gray-600 text-white w-7 h-7 flex items-center justify-center rounded-full font-bold text-base">
                     {column.vehicles.length}
                   </span>
                 </div>
                 <div className="mt-1 h-1 rounded-full" style={{ backgroundColor: column.color }}></div>
               </div>
-              <div className="flex-grow grid gap-3 p-3 min-h-0" style={{ gridTemplateRows: `repeat(${column.vehicles.length || 1}, minmax(0, 1fr))` }}>
+              <div
+                className="flex-grow flex flex-col gap-3 p-3 min-h-0"
+                style={{
+                  flex: 1,
+                  minHeight: 0,
+                  overflow: 'visible',
+                  justifyContent: 'space-evenly',
+                }}
+              >
                 {column.vehicles.length > 0 ? (
-                  column.vehicles.map(v => <VehicleCard key={v.id} vehicle={v} sizeClass={sizeClass} />)
+                  column.vehicles.map(v => (
+                    <div
+                      key={v.id}
+                      className={`rounded-lg mb-4 ${sizeClass}`}
+                      style={{
+                        background: cardBg,
+                        color: cardTextColor,
+                        border: 'none',
+                        boxShadow: isDark ? 'none' : '0 2px 16px rgba(24,26,32,0.12)',
+                        textShadow: isDark ? '0 2px 8px rgba(0,0,0,0.25)' : 'none',
+                        flex: 1,
+                        minHeight: 0,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <VehicleCard key={v.id} vehicle={v} sizeClass={sizeClass} plateColor={plateColor} />
+                    </div>
+                  ))
                 ) : (
                   <div className="flex items-center justify-center h-full">
                     <p className="text-gray-500">No vehicles here</p>
