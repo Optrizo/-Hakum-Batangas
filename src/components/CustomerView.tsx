@@ -23,6 +23,31 @@ const CustomerView: React.FC = () => {
     };
   }, [theme]);
 
+  useEffect(() => {
+    // Kiosk mode: hide navigation, block route changes
+    if (window.location.pathname === '/customer') {
+      // Hide nav/header/footer if present
+      const nav = document.querySelector('nav');
+      if (nav) nav.style.display = 'none';
+      const header = document.querySelector('header');
+      if (header) header.style.display = 'none';
+      const footer = document.querySelector('footer');
+      if (footer) footer.style.display = 'none';
+      // Block back/forward navigation
+      window.onpopstate = () => {
+        window.location.pathname = '/customer';
+      };
+      // Block programmatic navigation
+      window.addEventListener('hashchange', () => {
+        window.location.pathname = '/customer';
+      });
+    }
+    return () => {
+      window.onpopstate = null;
+      window.removeEventListener('hashchange', () => {});
+    };
+  }, []);
+
   const isDark = theme === 'dark';
   const bgMain = isDark ? 'bg-[#111113]' : 'bg-[#f4f6fa]';
   const bgColumn = isDark ? 'bg-[#181a20]' : 'bg-white';
