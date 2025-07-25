@@ -66,7 +66,7 @@ const CustomerView: React.FC = () => {
   }, [cars, motorcycles, packages]);
 
   const columns = useMemo(() => [
-    { title: 'WAITING', vehicles: activeVehicles.filter(v => v.status === 'waiting'), color: '#3b82f6' },
+    { title: 'WAITING IN QUEUE', vehicles: activeVehicles.filter(v => v.status === 'waiting'), color: '#3b82f6' },
     { title: 'IN PROGRESS', vehicles: activeVehicles.filter(v => v.status === 'in-progress'), color: '#2dd4bf' },
     { title: 'READY FOR PAYMENT', vehicles: activeVehicles.filter(v => v.status === 'payment-pending'), color: '#f59e0b' },
   ], [activeVehicles]);
