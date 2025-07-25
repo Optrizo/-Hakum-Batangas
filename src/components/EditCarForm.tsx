@@ -29,15 +29,12 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
              date.getFullYear() === today.getFullYear();
     };
 
-    console.log(`%c[EditCarForm] Calculating busy crew for car: ${car.plate}`, 'color: #f59e0b');
     const busyIds = new Set<string>();
     cars.forEach(c => {
-      // A crew member is busy if another car is 'in-progress' AND was created today.
       if (c.status === 'in-progress' && c.id !== car.id && isToday(c.created_at)) {
         c.crew?.forEach(crewId => busyIds.add(crewId));
       }
     });
-    console.log(`%c[EditCarForm] Busy Crew IDs for today (excluding current car):`, 'color: #f59e0b', Array.from(busyIds));
     return busyIds;
   }, [cars, car.id]);
 
@@ -49,7 +46,6 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
   const initialSelectedServices = initialServices.filter(id => serviceIds.has(id));
   const initialSelectedPackages = initialServices.filter(id => packageIds.has(id));
 
-  // Filter car services and packages
   const carServices = services.filter(s => s.vehicle_type === 'car');
   const carPackages = packages.filter(p => p.vehicle_type === 'car');
 
@@ -74,6 +70,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
   const [isCostOverridden, setIsCostOverridden] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const formTopRef = useRef<HTMLDivElement>(null);
+  const [initialCost, setInitialCost] = useState(car.initialCost ?? car.total_cost ?? 0);
 
   const hasPackageSelected = useMemo(() => formData.selectedPackages.length > 0, [formData.selectedPackages]);
 
@@ -118,8 +115,9 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
       total_cost: car.total_cost || 0,
     });
     setTotalCost(car.total_cost || 0);
+    setInitialCost(car.initialCost ?? car.total_cost ?? 0);
     setIsCostOverridden(false);
-  }, [car.id]);
+  }, [car.id, car.initialCost, car.total_cost]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -127,7 +125,6 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
     const plateResult = validateLicensePlate(formData.plate);
     if (!plateResult.isValid) newErrors.plate = plateResult.error!;
     else {
-      // Check for duplicate plate in active queue, excluding the current car
       const trimmedPlate = formData.plate.trim().toUpperCase();
       const isDuplicate = cars.some(
         c => c.id !== car.id &&
@@ -158,7 +155,10 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
       newErrors.crew = 'Assign at least one crew member for cars "In Progress".';
     }
 
-    // Services and packages are now optional - no validation required
+    // Require at least one service or package
+    if (formData.selectedServices.length + formData.selectedPackages.length === 0) {
+      newErrors.services = 'Please select at least one service or package.';
+    }
 
     setErrors(newErrors);
     setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the errors below.' : null);
@@ -172,6 +172,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
     if (name === 'total_cost') {
       setIsCostOverridden(true);
       setTotalCost(value === '' ? 0 : parseFloat(value));
+      setFormData(prev => ({ ...prev, total_cost: value === '' ? 0 : parseFloat(value) }));
       return;
     } else if (name === 'plate') {
       formattedValue = value.toUpperCase();
@@ -286,12 +287,26 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
         ...selectedServiceNames,
         ...selectedPackageNames
       ];
-      await updateCar(car.id, {
+
+      // If status is "in-progress" and no services/packages, set total_cost to 0 and preserve initialCost
+      let payload = {
         ...formData,
         total_cost: totalCost,
         service: allServiceNames.join(', '),
         services: allSelectedServiceIds,
-      });
+      };
+      if (
+        formData.status === 'in-progress' &&
+        formData.selectedServices.length === 0 &&
+        formData.selectedPackages.length === 0
+      ) {
+        payload.total_cost = 0;
+        payload.initialCost = car.initialCost ?? car.total_cost ?? totalCost;
+      } else {
+        payload.initialCost = car.initialCost ?? car.total_cost ?? totalCost;
+      }
+
+      await updateCar(car.id, payload);
       onComplete();
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'An unknown error occurred. Please try again.');
@@ -638,6 +653,11 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
           )}
         </button>
       </div>
+
+      <p className="mt-2 font-semibold">TOTAL COST: ₱{totalCost}</p>
+      {formData.status === 'in-progress' && totalCost === 0 && (car.initialCost ?? car.total_cost ?? 0) > 0 && (
+        <p className="text-xs text-gray-400">Initial Cost: ₱{car.initialCost ?? car.total_cost ?? 0}</p>
+      )}
     </form>
   );
 };

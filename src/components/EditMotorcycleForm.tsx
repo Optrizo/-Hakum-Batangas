@@ -277,6 +277,11 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
       newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
     }
 
+    // Require at least one service or package
+    if (formData.selectedServices.length + formData.selectedPackages.length === 0) {
+      newErrors.services = 'Please select at least one service or package.';
+    }
+
     // Services and packages are now optional - no validation required
 
     setErrors(newErrors);
