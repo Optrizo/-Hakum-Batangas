@@ -132,6 +132,15 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
         }
       } else {
         setAutoFilledFromHistory(false);
+        // If plate is cleared, also clear autofilled fields
+        if (formData.plate.trim() === '') {
+          setFormData(prev => ({
+            ...prev,
+            model: '',
+            phone: '',
+            size: 'medium',
+          }));
+        }
       }
     };
 
@@ -180,12 +189,31 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       newErrors.status = 'Please select a valid status';
     }
 
-    if (formData.status === 'in-progress' && formData.crew.length === 0 && !hasPackageSelected) {
-      newErrors.crew = 'Assign at least one crew member for cars starting "In Progress".';
+    // Crew validation for "in-progress"
+    if (formData.status === 'in-progress' && (!formData.crew || formData.crew.length === 0)) {
+      newErrors.crew = 'Assign at least one crew member when status is "In Progress".';
+    }
+
+    // Service/Package selection validation
+    const allServiceNames = [...formData.selectedServices, ...formData.selectedPackages];
+    if (allServiceNames.length === 0) {
+      newErrors.services = 'Please select at least one service or package.';
+    }
+
+    // Duplicate check for in-progress or waiting
+    const trimmedPlate = formData.plate.trim().toUpperCase();
+    const duplicate = cars.some(
+      c => c.plate.trim().toUpperCase() === trimmedPlate && (c.status === 'in-progress' || c.status === 'waiting')
+    );
+    if (duplicate) {
+      newErrors.plate = 'A car with this license plate is already in the active queue (in-progress or waiting).';
     }
 
     setErrors(newErrors);
-    setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the errors below and try again.' : null);
+    setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the following errors:' : null);
+    if (newErrors.crew) {
+      setIsCrewOpen(true);
+    }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -351,7 +379,11 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
               </svg>
               <div>
                 <p className="font-semibold">Please fix the following errors:</p>
-                <p className="text-sm mt-1">{formError}</p>
+                <ul className="text-sm mt-1 list-disc list-inside">
+                  {Object.values(errors).map((err, idx) => (
+                    <li key={idx}>{err}</li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
@@ -482,6 +514,14 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
               </select>
+              {errors.size && (
+                <p className="mt-1 text-xs text-red-500 flex items-start">
+                  <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.size}
+                </p>
+              )}
               <p className="mt-1 text-xs text-text-secondary-light dark:text-text-secondary-dark">
                 Select the vehicle size to determine pricing
               </p>
@@ -551,6 +591,14 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
                       <span className="text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark">₱{servicePrices[service.id]?.toLocaleString()}</span>
                     </div>
                   ))}
+                  {errors.services && (
+                    <p className="mt-2 text-xs text-red-500 flex items-center">
+                      <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.services}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -580,6 +628,14 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
                       <span className="text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark">₱{packagePrices[pkg.id]?.toLocaleString()}</span>
                     </div>
                   ))}
+                  {errors.services && (
+                    <p className="mt-2 text-xs text-red-500 flex items-center">
+                      <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.services}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -600,6 +656,14 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
                 <option value="waiting">Waiting</option>
                 <option value="in-progress" disabled={allCrewBusy}>In Progress</option>
               </select>
+              {errors.status && (
+                <p className="mt-1 text-xs text-red-500 flex items-start">
+                  <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.status}
+                </p>
+              )}
               <p className="mt-1 text-xs text-text-secondary-light dark:text-text-secondary-dark">
                 Set status to 'In Progress' if service is starting immediately.
                 {allCrewBusy && (
@@ -610,7 +674,7 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
 
             {/* Assign Crew - Hide if a package is selected */}
             {!hasPackageSelected && (
-              <div className="p-4 rounded-lg border border-border-light dark:border-border-dark bg-background-light dark:bg-gray-900/50">
+              <div className={`p-4 rounded-lg border ${errors.crew ? 'border-red-400 dark:border-red-600' : 'border-border-light dark:border-border-dark'} bg-background-light dark:bg-gray-900/50`}>
                 <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsCrewOpen(!isCrewOpen)}>
                   <span className="font-medium text-text-primary-light dark:text-text-primary-dark">
                     Assign Crew <span className="text-gray-500 text-xs">(Optional)</span>
@@ -648,6 +712,14 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
                     })}
                   </div>
                 )}
+                {errors.crew && (
+                  <p className="mt-2 text-xs text-red-500 flex items-center">
+                    <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.crew}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -673,14 +745,19 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
                 min="0"
                 step="0.01"
               />
+              {errors.total_cost && (
+                <p className="mt-1 text-xs text-red-500 text-right flex items-center justify-end">
+                  <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.total_cost}
+                </p>
+              )}
             </div>
           </div>
           {errors.total_cost ? (
-            <p className="mt-1 text-xs text-red-500 text-right flex items-center justify-end">
-              <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              {errors.total_cost}
+            <p className="mt-1 text-xs text-text-secondary-light dark:text-text-secondary-dark text-right">
+              Cost is calculated automatically based on selected services and packages
             </p>
           ) : (
             <p className="mt-1 text-xs text-text-secondary-light dark:text-text-secondary-dark text-right">

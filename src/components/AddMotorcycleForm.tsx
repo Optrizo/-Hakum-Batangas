@@ -110,6 +110,17 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
         } finally {
           setIsSearchingHistory(false);
         }
+      } else {
+        setAutoFilledFromHistory(false);
+        // If plate is cleared, also clear autofilled fields
+        if (formData.plate.trim() === '') {
+          setFormData(prev => ({
+            ...prev,
+            model: '',
+            phone: '',
+            size: 'small',
+          }));
+        }
       }
     };
 
@@ -227,15 +238,15 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   };
 
   const validateServicesAndPackages = (services: string[], packages: string[]) => {
-    // Validate services/packages - now optional
-    // if (services.length === 0 && packages.length === 0) {
-    //   setErrors(prev => ({ ...prev, services: 'Please select at least one service or package.' }));
-    // } else {
-    //   setErrors(prev => {
-    //     const { services: _, ...rest } = prev;
-    //     return rest;
-    //   });
-    // }
+    // Validate services/packages - at least one must be selected
+    if (services.length === 0 && packages.length === 0) {
+      setErrors(prev => ({ ...prev, services: 'Please select at least one service or package.' }));
+    } else {
+      setErrors(prev => {
+        const { services, ...rest } = prev;
+        return rest;
+      });
+    }
   };
 
   const validate = (): boolean => {
@@ -265,8 +276,17 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
     }
 
+    // Duplicate check for in-progress or waiting
+    const trimmedPlate = formData.plate.trim().toUpperCase();
+    const duplicate = crews && crews.length > 0 && crews.some(
+      m => m.plate && m.plate.trim().toUpperCase() === trimmedPlate && (m.status === 'in-progress' || m.status === 'waiting')
+    );
+    if (duplicate) {
+      newErrors.plate = 'A motorcycle with this license plate is already in the active queue (in-progress or waiting).';
+    }
+
     setErrors(newErrors);
-    setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the errors below.' : null);
+    setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the following errors:' : null);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -351,7 +371,11 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
               </svg>
               <div>
                 <p className="font-semibold">Please fix the following errors:</p>
-                <p className="text-sm mt-1">{formError}</p>
+                <ul className="text-sm mt-1 list-disc list-inside">
+                  {Object.values(errors).map((err, idx) => (
+                    <li key={idx}>{err}</li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
@@ -466,6 +490,14 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
                   <option key={size.value} value={size.value}>{size.label}</option>
                 ))}
               </select>
+              {errors.size && (
+                <p className="mt-1 text-xs text-red-500 flex items-start">
+                  <svg className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.size}
+                </p>
+              )}
               <p className="mt-1 text-xs text-text-secondary-light dark:text-text-secondary-dark">
                 Motorcycle size affects service pricing
               </p>
@@ -528,6 +560,14 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
+              {errors.status && (
+                <p className="mt-1 text-xs text-red-500 flex items-start">
+                  <svg className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.status}
+                </p>
+              )}
               <p className="mt-1 text-xs text-text-secondary-light dark:text-text-secondary-dark">
                 Current service status of the motorcycle
               </p>
@@ -555,7 +595,12 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
                 ))}
               </div>
               {errors.services && (
-                <p className="mt-1 text-xs text-red-500">{errors.services}</p>
+                <p className="mt-2 text-xs text-red-500 flex items-center">
+                  <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.services}
+                </p>
               )}
             </div>
 
@@ -642,6 +687,14 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
                   step="0.01"
                 />
               </div>
+              {errors.total_cost && (
+                <p className="mt-1 text-xs text-red-500 flex items-start">
+                  <svg className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.total_cost}
+                </p>
+              )}
             </div>
           </div>
         </div>
