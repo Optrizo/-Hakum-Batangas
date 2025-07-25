@@ -274,13 +274,14 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
     }
 
-    // Duplicate check for in-progress or waiting
+    // Duplicate check for in-progress, waiting, or payment-pending
     const trimmedPlate = formData.plate.trim().toUpperCase();
-    const duplicate = crews && crews.length > 0 && crews.some(
-      m => m.plate && m.plate.trim().toUpperCase() === trimmedPlate && (m.status === 'in-progress' || m.status === 'waiting')
+    const motorcycles = crews.filter(m => m.vehicle_type === 'motorcycle');
+    const duplicate = motorcycles.some(
+      m => m.plate && m.plate.trim().toUpperCase() === trimmedPlate && (m.status === 'in-progress' || m.status === 'waiting' || m.status === 'payment-pending')
     );
     if (duplicate) {
-      newErrors.plate = 'A motorcycle with this license plate is already in the active queue (in-progress or waiting).';
+      newErrors.plate = 'A motorcycle with this license plate is already in the active queue (waiting, in-progress, or payment).';
     }
 
     setErrors(newErrors);
@@ -362,20 +363,13 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       <form onSubmit={handleSubmit} className="bg-surface-light dark:bg-surface-dark p-6 rounded-lg shadow-sm border border-border-light dark:border-border-dark">
         <div ref={formTopRef} />
         {formError && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg mb-4">
-            <div className="flex items-start">
-              <svg className="w-5 h-5 text-red-400 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <p className="font-semibold">Please fix the following errors:</p>
-                <ul className="text-sm mt-1 list-disc list-inside">
-                  {Object.values(errors).map((err, idx) => (
-                    <li key={idx}>{err}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            <strong className="block mb-1">{formError}</strong>
+            <ul className="list-disc pl-5">
+              {Object.entries(errors).map(([field, error]) => (
+                <li key={field}>{error}</li>
+              ))}
+            </ul>
           </div>
         )}
         

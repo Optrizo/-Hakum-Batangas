@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useQueue } from '../context/QueueContext';
 import { Service, MotorcycleSizePricing, ServicePackage } from '../types';
 import { Wrench, Edit2, Trash2, Box } from 'lucide-react';
+import EditMotorcyclePackageForm from './EditMotorcyclePackageForm';
 
 const emptyService: Omit<Service, 'id' | 'created_at' | 'updated_at' | 'price' | 'pricing'> & { pricing: MotorcycleSizePricing } = {
   name: '',
@@ -105,6 +106,11 @@ const MotorcycleServicesPage: React.FC = () => {
         alert(`Error: ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
       }
     }
+  };
+
+  const handleEditPackageClick = (pkg: ServicePackage) => {
+    setEditingPackage(pkg);
+    setFormError('');
   };
 
   const handlePricingChange = (size: 'small' | 'large', value: number) => {
@@ -346,105 +352,15 @@ const MotorcycleServicesPage: React.FC = () => {
         )}
 
         {activeTab === 'packages' && showPackageForm && (
-          <div className="bg-surface-light dark:bg-surface-dark p-4 sm:p-6 rounded-lg shadow-sm border border-border-light dark:border-border-dark mb-8">
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold text-text-primary-light dark:text-text-primary-dark">
-                {editingPackage ? 'Edit Package' : 'Add New Package'}
-              </h3>
-              <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
-                {editingPackage ? 'Update the details for this motorcycle package.' : 'Define a new package for motorcycles.'}
-              </p>
-            </div>
-
-            <form onSubmit={handlePackageSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <label htmlFor="name" className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1">
-                  Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  value={packageFormData.name}
-                  onChange={e => setPackageFormData(prev => ({...prev, name: e.target.value}))}
-                  className="block w-full rounded-lg bg-background-light dark:bg-background-dark border shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2.5"
-                  placeholder="e.g., Oil Change Package"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label htmlFor="description" className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1">
-                  Description <span className="text-gray-500 text-xs">(Optional)</span>
-                </label>
-                <textarea
-                  id="description"
-                  value={packageFormData.description}
-                  onChange={e => setPackageFormData(prev => ({...prev, description: e.target.value}))}
-                  rows={3}
-                  className="block w-full rounded-lg bg-background-light dark:bg-background-dark border shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2.5"
-                  placeholder="Briefly describe the package..."
-                />
-              </div>
-
-              <div>
-                <label htmlFor="package-price-small" className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1">
-                  Small Size Price <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <span className="text-text-secondary-light dark:text-text-secondary-dark sm:text-sm">₱</span>
-                  </div>
-                  <input
-                    type="number"
-                    id="package-price-small"
-                    value={packageFormData.pricing?.small === 0 ? '' : packageFormData.pricing?.small}
-                    onChange={e => {
-                      const value = e.target.value.replace(/^0+(?!$)/, '');
-                      setPackageFormData(prev => ({
-                        ...prev,
-                        pricing: { ...prev.pricing, small: Number(value) || 0 }
-                      }));
-                    }}
-                    className="block w-full rounded-lg bg-background-light dark:bg-background-dark border shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2.5 pl-7"
-                    min="0"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label htmlFor="package-price-large" className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1">
-                  Large Size Price <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <span className="text-text-secondary-light dark:text-text-secondary-dark sm:text-sm">₱</span>
-                  </div>
-                  <input
-                    type="number"
-                    id="package-price-large"
-                    value={packageFormData.pricing?.large === 0 ? '' : packageFormData.pricing?.large}
-                    onChange={e => {
-                      const value = e.target.value.replace(/^0+(?!$)/, '');
-                      setPackageFormData(prev => ({
-                        ...prev,
-                        pricing: { ...prev.pricing, large: Number(value) || 0 }
-                      }));
-                    }}
-                    className="block w-full rounded-lg bg-background-light dark:bg-background-dark border shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2.5 pl-7"
-                    min="0"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              {formError && <p className="md:col-span-2 mt-2 text-sm text-red-500">{formError}</p>}
-              
-              <div className="md:col-span-2 flex justify-end gap-3">
-                <button type="button" onClick={handleCancel} className="px-4 py-2 text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark bg-surface-light dark:bg-surface-dark border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-brand-blue rounded-lg hover:bg-brand-dark-blue">{editingPackage ? 'Save Changes' : 'Create Package'}</button>
-              </div>
-            </form>
-          </div>
+          <EditMotorcyclePackageForm
+            editingPackage={editingPackage}
+            packageFormData={packageFormData}
+            setPackageFormData={setPackageFormData}
+            onSave={handlePackageSubmit}
+            onCancel={handleCancel}
+            formError={formError}
+            motorcycleServices={motorcycleServices}
+          />
         )}
 
         {activeTab === 'services' && !showServiceForm && (
@@ -513,17 +429,31 @@ const MotorcycleServicesPage: React.FC = () => {
                         <h4 className="text-base font-semibold text-text-primary-light dark:text-text-primary-dark truncate">{pkg.name}</h4>
                         <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1 truncate">
                           {pkg.description || 'No description available.'}
-                </p>
-              </div>
+                        </p>
+                      </div>
                       <div className="flex items-baseline gap-4 mt-4 sm:mt-0 sm:ml-6">
+                        <div className="flex flex-col text-right mr-4">
+                          <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">Small</span>
+                          <span className="font-semibold text-text-primary-light dark:text-text-primary-dark">
+                            ₱{pkg.pricing?.small ?? 'N/A'}
+                          </span>
+                        </div>
+                        <div className="flex flex-col text-right mr-4">
+                          <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">Large</span>
+                          <span className="font-semibold text-text-primary-light dark:text-text-primary-dark">
+                            ₱{pkg.pricing?.large ?? 'N/A'}
+                          </span>
+                        </div>
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleEditClick(pkg)}
-                            className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                            title="Edit Package"
-                          >
-                            <Edit2 className="h-4 w-4 text-gray-500" />
-                          </button>
+                          {pkg.status !== 'completed' && (
+                            <button
+                              onClick={() => handleEditPackageClick(pkg)}
+                              className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                              title="Edit Package"
+                            >
+                              <Edit2 className="h-4 w-4 text-gray-500" />
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDeletePackageClick(pkg)}
                             className="p-2 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"

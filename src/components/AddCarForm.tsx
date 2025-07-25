@@ -189,13 +189,13 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       newErrors.services = 'Please select at least one service or package.';
     }
 
-    // Duplicate check for in-progress or waiting
+    // Duplicate check for in-progress, waiting, or payment-pending
     const trimmedPlate = formData.plate.trim().toUpperCase();
     const duplicate = cars.some(
-      c => c.plate.trim().toUpperCase() === trimmedPlate && (c.status === 'in-progress' || c.status === 'waiting')
+      c => c.plate.trim().toUpperCase() === trimmedPlate && (c.status === 'in-progress' || c.status === 'waiting' || c.status === 'payment-pending')
     );
     if (duplicate) {
-      newErrors.plate = 'A car with this license plate is already in the active queue (in-progress or waiting).';
+      newErrors.plate = 'A car with this license plate is already in the active queue (waiting, in-progress, or payment).';
     }
 
     setErrors(newErrors);

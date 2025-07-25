@@ -845,6 +845,12 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         console.error('Supabase error updating package:', error);
         throw new Error(`Failed to update package: ${error.message}`);
       }
+      // Update local state
+      setPackages(prev =>
+        prev.map(pkg =>
+          pkg.id === id ? { ...pkg, ...updates } : pkg
+        )
+      );
     } catch (err) {
       console.error('Error in updatePackage:', err);
       if (err instanceof Error) {

@@ -385,7 +385,7 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
           )}
         </div>
 
-        {isAssigningCrew && (
+        {isAssigningCrew && vehicle.status !== 'completed' && (
               <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-background-light dark:bg-black/50 rounded-lg border border-border-light dark:border-border-dark">
                 <div className="flex flex-col space-y-3">
                   <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
@@ -497,14 +497,16 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
                 )}
               </div>
               <div className="flex items-center gap-2 self-end sm:self-center">
-                <button 
-                  onClick={() => setIsEditing(true)} 
-                  className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  title="Edit Vehicle"
-                  aria-label="Edit Vehicle"
-                >
-                  <Edit2 className="h-4 w-4 text-gray-500" />
-                </button>
+                {vehicle.status !== 'completed' && (
+                  <button 
+                    onClick={() => setIsEditing(true)} 
+                    className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    title="Edit Vehicle"
+                    aria-label="Edit Vehicle"
+                  >
+                    <Edit2 className="h-4 w-4 text-gray-500" />
+                  </button>
+                )}
             <button
                   onClick={() => setIsAssigningCrew(!isAssigningCrew)}
                   className={`inline-flex items-center p-1.5 sm:p-2 border shadow-sm text-xs font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue transition-colors ${
