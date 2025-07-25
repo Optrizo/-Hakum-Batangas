@@ -2,6 +2,11 @@
   "version": 2,
   "routes": [
     { "src": "/api/send-sms", "dest": "/api" },
+    { "src": "/static/(.*)", "dest": "/static/$1" },
+    { "src": "/favicon.ico", "dest": "/favicon.ico" },
+    { "src": "/robots.txt", "dest": "/robots.txt" },
+    { "src": "/manifest.json", "dest": "/manifest.json" },
+    { "src": "/(.*\\.(js|css|png|jpg|svg|ico|json|txt|woff2?))", "dest": "/$1" },
     { "src": "/(.*)", "dest": "/" }
   ]
 }
