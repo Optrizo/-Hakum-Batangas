@@ -103,17 +103,11 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       // Only trigger if plate is a valid, complete Philippine car plate
       const platePattern = /^[A-Z]{3}-?\d{3,4}$/;
       if (platePattern.test(formData.plate.toUpperCase())) {
-        console.log(`🚀 Auto-completion triggered for plate: "${formData.plate}"`);
         setIsSearchingHistory(true);
         setAutoFilledFromHistory(false);
         try {
           const historyCar = await searchCarHistory(formData.plate);
           if (historyCar) {
-            console.log('🎯 Auto-filling form with history data:', {
-              model: historyCar.model,
-              phone: historyCar.phone,
-              size: historyCar.size
-            });
             setFormData(prev => ({
               ...prev,
               model: historyCar.model,
@@ -121,9 +115,6 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
               size: historyCar.size
             }));
             setAutoFilledFromHistory(true);
-            console.log('✅ Auto-fill completed successfully');
-          } else {
-            console.log('ℹ️ No history found for this plate');
           }
         } catch (error) {
           console.error('❌ Error during auto-completion:', error);
@@ -132,15 +123,13 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
         }
       } else {
         setAutoFilledFromHistory(false);
-        // If plate is cleared, also clear autofilled fields
-        if (formData.plate.trim() === '') {
-          setFormData(prev => ({
-            ...prev,
-            model: '',
-            phone: '',
-            size: 'medium',
-          }));
-        }
+        // If plate is not valid, also clear autofilled fields
+        setFormData(prev => ({
+          ...prev,
+          model: '',
+          phone: '',
+          size: 'medium',
+        }));
       }
     };
 

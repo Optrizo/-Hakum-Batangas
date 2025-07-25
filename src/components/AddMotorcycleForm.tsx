@@ -112,15 +112,13 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
         }
       } else {
         setAutoFilledFromHistory(false);
-        // If plate is cleared, also clear autofilled fields
-        if (formData.plate.trim() === '') {
-          setFormData(prev => ({
-            ...prev,
-            model: '',
-            phone: '',
-            size: 'small',
-          }));
-        }
+        // If plate is not valid, also clear autofilled fields
+        setFormData(prev => ({
+          ...prev,
+          model: '',
+          phone: '',
+          size: 'small',
+        }));
       }
     };
 
