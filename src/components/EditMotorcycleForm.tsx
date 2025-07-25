@@ -80,12 +80,11 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
       return sum + price;
     }, 0);
 
+    // FIX: Calculate packageTotal as a plain variable, not a hook
     const packageId = formData.selectedPackages[0];
-    const packageTotal = useMemo(() => {
-      if (!packageId) return 0;
-      const pkg = motorcyclePackages.find(p => p.id === packageId);
-      return (pkg?.pricing as MotorcycleSizePricing)?.[formData.size] || 0;
-    }, [packageId, formData.size, motorcyclePackages]);
+    const packageTotal = packageId
+      ? ((motorcyclePackages.find(p => p.id === packageId)?.pricing as MotorcycleSizePricing)?.[formData.size] || 0)
+      : 0;
 
     const total = serviceTotal + packageTotal;
     
