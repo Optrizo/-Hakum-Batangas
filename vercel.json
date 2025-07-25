@@ -1,9 +1,7 @@
 {
   "version": 2,
   "routes": [
-    { "src": "/api/send-sms", "dest": "/api" }
-  ],
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+    { "src": "/api/send-sms", "dest": "/api" },
+    { "src": "/(.*)", "dest": "/" }
   ]
 }
