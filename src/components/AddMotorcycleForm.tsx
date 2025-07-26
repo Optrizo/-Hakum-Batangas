@@ -154,13 +154,7 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       }
     }
 
-    // Only update the changed field, keep selectedServices and selectedPackages always
-    setFormData(prev => ({
-      ...prev,
-      [name]: formattedValue,
-      selectedServices: prev.selectedServices,
-      selectedPackages: prev.selectedPackages
-    }));
+    setFormData(prev => ({ ...prev, [name]: formattedValue }));
 
     if (errors[name]) {
       validateField(name, formattedValue);
@@ -226,19 +220,13 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
 
     setFormData(prev => ({
       ...prev,
-      selectedPackages: newSelectedPackages
-      // Do NOT clear crew when selecting a package; preserve crew selection
+      selectedPackages: newSelectedPackages,
+      crew: newSelectedPackages.length > 0 ? [] : prev.crew,
     }));
     validateServicesAndPackages(formData.selectedServices, newSelectedPackages);
   };
 
   const handleCrewToggle = (crewId: string) => {
-    // Prevent crew selection if no service or package is selected
-    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
-      setErrors(prev => ({ ...prev, services: 'Please select at least one service or package before assigning crew.' }));
-      setFormError('Please fix the following errors:');
-      return;
-    }
     setFormData(prev => ({
       ...prev,
       crew: prev.crew.includes(crewId)
@@ -251,16 +239,11 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
     // Validate services/packages - at least one must be selected
     if (services.length === 0 && packages.length === 0) {
       setErrors(prev => ({ ...prev, services: 'Please select at least one service or package.' }));
-      setFormError('Please fix the following errors:');
     } else {
       setErrors(prev => {
         const { services, ...rest } = prev;
         return rest;
       });
-      // Only clear formError if no other errors remain
-      if (Object.keys(errors).length === 1 && errors.services) {
-        setFormError(null);
-      }
     }
   };
 
@@ -286,14 +269,8 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       if (!phoneResult.isValid) newErrors.phone = phoneResult.error!;
     }
 
-    // Validate at least one service or package is selected
-    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
-      newErrors.services = 'Please select at least one service or package.';
-      setFormError('Please fix the following errors:');
-    }
-
-    // Validate crew if status is 'in-progress' (required regardless of package selection)
-    if (formData.status === 'in-progress' && formData.crew.length === 0) {
+    // Validate crew if status is 'in-progress'
+    if (formData.status === 'in-progress' && formData.crew.length === 0 && !hasPackageSelected) {
       newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
     }
 
@@ -308,11 +285,7 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
     }
 
     setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) {
-      setFormError('Please fix the following errors:');
-    } else {
-      setFormError(null);
-    }
+    setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the following errors:' : null);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -646,48 +619,43 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
               </div>
             </div>
 
-            {/* Crew Selection - always visible, required when in-progress */}
-            <div className="mb-6">
-              <label className="block text-lg font-bold mb-2 text-gray-800 dark:text-white">
-                Assign Crew
-                {(formData.status as string) === 'in-progress' && (
-                  <span className="text-red-500 ml-1 text-base align-middle">*</span>
-                )}
-              </label>
-              <div className="p-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
-                <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsCrewOpen(!isCrewOpen)}>
-                  <span className="font-medium text-gray-700 dark:text-gray-200">
-                    {formData.crew.length > 0
-                      ? crews.filter(c => formData.crew.includes(c.id)).map(c => c.name).join(', ')
-                      : 'Select Crew...'}
-                  </span>
-                  <svg className={`w-5 h-5 text-gray-500 transition-transform ${isCrewOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                </div>
-                {isCrewOpen && (
-                  <div className="mt-4 space-y-3">
-                    {crews.map((crewMember) => (
-                      <label 
-                        key={crewMember.id} 
-                        className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
-                      >
-                        <div className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={formData.crew.includes(crewMember.id)}
-                            onChange={() => handleCrewToggle(crewMember.id)}
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200">{crewMember.name}</span>
-                        </div>
-                      </label>
-                    ))}
+            {/* Crew Selection */}
+            {formData.status !== 'in-progress' && (
+              <div className="mb-6">
+                <label className="block text-lg font-bold mb-2 text-gray-800 dark:text-white">Assign Crew</label>
+                <div className="p-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
+                  <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsCrewOpen(!isCrewOpen)}>
+                    <span className="font-medium text-gray-700 dark:text-gray-200">
+                      {formData.crew.length > 0
+                        ? crews.filter(c => formData.crew.includes(c.id)).map(c => c.name).join(', ')
+                        : 'Select Crew...'}
+                    </span>
+                    <svg className={`w-5 h-5 text-gray-500 transition-transform ${isCrewOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                   </div>
-                )}
+                  {isCrewOpen && (
+                    <div className="mt-4 space-y-3">
+                      {crews.map((crewMember) => (
+                        <label 
+                          key={crewMember.id} 
+                          className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                        >
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.crew.includes(crewMember.id)}
+                              onChange={() => handleCrewToggle(crewMember.id)}
+                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200">{crewMember.name}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {errors.crew && <p className="text-red-500 text-sm mt-2">{errors.crew}</p>}
               </div>
-              {(formData.status as string) === 'in-progress' && errors.crew && (
-                <p className="text-red-500 text-sm mt-2">{errors.crew}</p>
-              )}
-            </div>
+            )}
 
             {/* Total Cost */}
             <div className="mb-4">
