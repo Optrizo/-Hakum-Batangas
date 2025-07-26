@@ -269,8 +269,8 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       if (!phoneResult.isValid) newErrors.phone = phoneResult.error!;
     }
 
-    // Validate crew if status is 'in-progress'
-    if (formData.status === 'in-progress' && formData.crew.length === 0 && !hasPackageSelected) {
+    // Validate crew if status is 'in-progress' (required regardless of package selection)
+    if (formData.status === 'in-progress' && formData.crew.length === 0) {
       newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
     }
 
