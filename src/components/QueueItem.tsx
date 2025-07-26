@@ -21,6 +21,7 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
   const [isAssigningCrew, setIsAssigningCrew] = useState(false);
   const [showCrewWarning, setShowCrewWarning] = useState(false);
   const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>(vehicle.crew || []);
+  const [crewSelectionError, setCrewSelectionError] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 640);
 
   const isMotorcycle = 'vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle';
@@ -209,6 +210,11 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
   };
 
   const handleAssignCrew = async () => {
+    if (selectedCrewIds.length === 0) {
+      setCrewSelectionError('Please select at least one crew member.');
+      return;
+    }
+    setCrewSelectionError(null);
     try {
       setIsUpdating(true);
       if (isMotorcycle) {
@@ -244,6 +250,7 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
     setIsAssigningCrew(false);
     setShowCrewWarning(false);
     setSelectedCrewIds(vehicle.crew || []);
+    setCrewSelectionError(null);
   };
 
   const toggleCollapse = (e: React.MouseEvent) => {
@@ -383,27 +390,29 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
           ) : (
                 <span className="text-text-secondary-light dark:text-text-secondary-dark text-sm">Not assigned</span>
           )}
-        </div>
-
+        </div>  
         {isAssigningCrew && vehicle.status !== 'completed' && (
-              <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-background-light dark:bg-black/50 rounded-lg border border-border-light dark:border-border-dark">
-                <div className="flex flex-col space-y-3">
-                  <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
-                Select Crew Members
+          <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-background-light dark:bg-black/50 rounded-lg border border-border-light dark:border-border-dark">
+            <div className="flex flex-col space-y-3">
+              <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
+                Select Crew Members <span className="text-red-500">*</span>
               </label>
-                  {showCrewWarning && (
-                    <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-md">
-                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                        <strong>Action Required:</strong> Please assign at least one crew member before starting the service.
-                      </p>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-32 overflow-y-auto pr-2">
+              {selectedCrewIds.length === 0 && (
+                <div className="text-red-500 text-xs mt-1">Please select at least one crew member.</div>
+              )}
+              {showCrewWarning && (
+                <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-md">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                    <strong>Action Required:</strong> Please assign at least one crew member before starting the service.
+                  </p>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-32 overflow-y-auto pr-2">
                 {crews.map(member => {
                   const isBusy = busyCrewIds.has(member.id);
                   return (
-                    <label 
-                      key={member.id} 
+                    <label
+                      key={member.id}
                       className={`flex items-center justify-between cursor-pointer p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors ${
                         isBusy ? 'cursor-not-allowed opacity-50' : ''
                       }`}
@@ -425,17 +434,20 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
                   );
                 })}
               </div>
-                  <div className="flex flex-col sm:flex-row justify-end gap-2 mt-3">
+              {crewSelectionError && (
+                <div className="text-red-500 text-xs mt-1">{crewSelectionError}</div>
+              )}
+              <div className="flex flex-col sm:flex-row justify-end gap-2 mt-3">
                 <button
-                      onClick={cancelCrewAssignment}
-                      className="inline-flex items-center justify-center px-3 py-1.5 border border-border-light dark:border-border-dark shadow-sm text-xs font-medium rounded-md text-text-primary-light dark:text-text-primary-dark bg-surface-light dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-light dark:focus:ring-offset-surface-dark focus:ring-brand-blue transition-colors"
+                  onClick={cancelCrewAssignment}
+                  className="inline-flex items-center justify-center px-3 py-1.5 border border-border-light dark:border-border-dark shadow-sm text-xs font-medium rounded-md text-text-primary-light dark:text-text-primary-dark bg-surface-light dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-light dark:focus:ring-offset-surface-dark focus:ring-brand-blue transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleAssignCrew}
-                      className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-brand-blue hover:bg-brand-dark-blue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-light dark:focus:ring-offset-surface-dark focus:ring-brand-blue transition-colors"
-                  disabled={isUpdating}
+                  className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-brand-blue hover:bg-brand-dark-blue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-light dark:focus:ring-offset-surface-dark focus:ring-brand-blue transition-colors"
+                  disabled={isUpdating || selectedCrewIds.length === 0}
                 >
                   {isUpdating ? 'Saving...' : 'Save'}
                 </button>
