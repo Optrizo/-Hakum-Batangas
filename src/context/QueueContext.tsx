@@ -336,7 +336,17 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!plateValidation.isValid) {
         throw new Error(plateValidation.error);
       }
-      
+
+      // Duplicate check: only consider cars not completed or cancelled
+      const normalizedPlate = car.plate.trim().toUpperCase();
+      const isDuplicate = cars.some(
+        c => c.plate.trim().toUpperCase() === normalizedPlate &&
+             c.status !== 'completed' && c.status !== 'cancelled'
+      );
+      if (isDuplicate) {
+        throw new Error(`A car with license plate "${car.plate}" is already in the active queue.`);
+      }
+
       const { data, error } = await supabase
         .from('cars')
         .insert([
@@ -493,6 +503,15 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const plateValidation = validateMotorcyclePlate(motorcycle.plate);
       if (!plateValidation.isValid) {
         throw new Error(plateValidation.error);
+      }
+      // Duplicate check: only consider motorcycles not completed or cancelled
+      const normalizedPlate = motorcycle.plate.trim().toUpperCase();
+      const isDuplicate = motorcycles.some(
+        m => m.plate.trim().toUpperCase() === normalizedPlate &&
+             m.status !== 'completed' && m.status !== 'cancelled'
+      );
+      if (isDuplicate) {
+        throw new Error(`A motorcycle with license plate "${motorcycle.plate}" is already in the active queue.`);
       }
       // Validate model
       const modelValidation = validateMotorcycleModel(motorcycle.model);
