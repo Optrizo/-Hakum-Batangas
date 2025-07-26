@@ -619,9 +619,14 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
               </div>
             </div>
 
-            {/* Crew Selection - always visible */}
+            {/* Crew Selection - always visible, required when in-progress */}
             <div className="mb-6">
-              <label className="block text-lg font-bold mb-2 text-gray-800 dark:text-white">Assign Crew</label>
+              <label className="block text-lg font-bold mb-2 text-gray-800 dark:text-white">
+                Assign Crew
+                {(formData.status as string) === 'in-progress' && (
+                  <span className="text-red-500 ml-1 text-base align-middle">*</span>
+                )}
+              </label>
               <div className="p-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
                 <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsCrewOpen(!isCrewOpen)}>
                   <span className="font-medium text-gray-700 dark:text-gray-200">
@@ -652,7 +657,9 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
                   </div>
                 )}
               </div>
-              {errors.crew && <p className="text-red-500 text-sm mt-2">{errors.crew}</p>}
+              {(formData.status as string) === 'in-progress' && errors.crew && (
+                <p className="text-red-500 text-sm mt-2">{errors.crew}</p>
+              )}
             </div>
 
             {/* Total Cost */}
