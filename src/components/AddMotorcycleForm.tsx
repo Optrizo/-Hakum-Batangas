@@ -154,7 +154,13 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       }
     }
 
-    setFormData(prev => ({ ...prev, [name]: formattedValue }));
+    // Only update the changed field, keep selectedServices and selectedPackages always
+    setFormData(prev => ({
+      ...prev,
+      [name]: formattedValue,
+      selectedServices: prev.selectedServices,
+      selectedPackages: prev.selectedPackages
+    }));
 
     if (errors[name]) {
       validateField(name, formattedValue);
@@ -267,6 +273,11 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
     if (formData.phone) {
       const phoneResult = validatePhoneNumber(formData.phone);
       if (!phoneResult.isValid) newErrors.phone = phoneResult.error!;
+    }
+
+    // Validate at least one service or package is selected
+    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
+      newErrors.services = 'Please select at least one service or package.';
     }
 
     // Validate crew if status is 'in-progress' (required regardless of package selection)
