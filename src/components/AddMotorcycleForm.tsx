@@ -233,6 +233,12 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   };
 
   const handleCrewToggle = (crewId: string) => {
+    // Prevent crew selection if no service or package is selected
+    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
+      setErrors(prev => ({ ...prev, services: 'Please select at least one service or package before assigning crew.' }));
+      setFormError('Please fix the following errors:');
+      return;
+    }
     setFormData(prev => ({
       ...prev,
       crew: prev.crew.includes(crewId)
@@ -245,11 +251,16 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
     // Validate services/packages - at least one must be selected
     if (services.length === 0 && packages.length === 0) {
       setErrors(prev => ({ ...prev, services: 'Please select at least one service or package.' }));
+      setFormError('Please fix the following errors:');
     } else {
       setErrors(prev => {
         const { services, ...rest } = prev;
         return rest;
       });
+      // Only clear formError if no other errors remain
+      if (Object.keys(errors).length === 1 && errors.services) {
+        setFormError(null);
+      }
     }
   };
 
@@ -278,6 +289,7 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
     // Validate at least one service or package is selected
     if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
       newErrors.services = 'Please select at least one service or package.';
+      setFormError('Please fix the following errors:');
     }
 
     // Validate crew if status is 'in-progress' (required regardless of package selection)
@@ -296,7 +308,11 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
     }
 
     setErrors(newErrors);
-    setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the following errors:' : null);
+    if (Object.keys(newErrors).length > 0) {
+      setFormError('Please fix the following errors:');
+    } else {
+      setFormError(null);
+    }
     return Object.keys(newErrors).length === 0;
   };
 
