@@ -22,7 +22,7 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
     plate: '',
     model: '',
     size: 'small' as const,
-    status: 'waiting' as const,
+    status: 'waiting' as 'waiting' | 'in-progress',
     phone: '',
     crew: [] as string[],
     selectedServices: [] as string[],
@@ -38,6 +38,13 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   const [manualTotalCost, setManualTotalCost] = useState<number | ''>('');
   const [isCostOverridden, setIsCostOverridden] = useState(false);
   const [servicePrices, setServicePrices] = useState<Record<string, number>>({});
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (formError && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [formError]);
   const [packagePrices, setPackagePrices] = useState<Record<string, number>>({});
   const [calculatedCost, setCalculatedCost] = useState(0);
   const [isCrewOpen, setIsCrewOpen] = useState(false);
@@ -269,6 +276,14 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       if (!phoneResult.isValid) newErrors.phone = phoneResult.error!;
     }
 
+    // Require at least one service or package for WAITING or IN-PROGRESS status
+    if (
+      (formData.status === 'waiting' || formData.status === 'in-progress') &&
+      formData.selectedServices.length + formData.selectedPackages.length === 0
+    ) {
+      newErrors.services = 'Please select at least one service or package.';
+    }
+
     // Validate crew if status is 'in-progress'
     if (formData.status === 'in-progress' && formData.crew.length === 0 && !hasPackageSelected) {
       newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
@@ -363,13 +378,20 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       <form onSubmit={handleSubmit} className="bg-surface-light dark:bg-surface-dark p-6 rounded-lg shadow-sm border border-border-light dark:border-border-dark">
         <div ref={formTopRef} />
         {formError && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-            <strong className="block mb-1">{formError}</strong>
-            <ul className="list-disc pl-5">
-              {Object.entries(errors).map(([field, error]) => (
-                <li key={field}>{error}</li>
-              ))}
-            </ul>
+          <div ref={errorRef} className="mb-4 p-4 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-red-400 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="font-semibold">{formError}</p>
+                <ul className="text-sm mt-1 list-disc list-inside">
+                  {Object.entries(errors).map(([field, error]) => (
+                    <li key={field}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
         )}
         
@@ -620,7 +642,7 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
             </div>
 
             {/* Crew Selection */}
-            {formData.status !== 'in-progress' && (
+            {formData.status === 'in-progress' && (
               <div className="mb-6">
                 <label className="block text-lg font-bold mb-2 text-gray-800 dark:text-white">Assign Crew</label>
                 <div className="p-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">

@@ -11,6 +11,7 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
   // Add filtering for car services and packages
   const carServices = useMemo(() => services.filter(s => s.vehicle_type === 'car'), [services]);
   const carPackages = useMemo(() => packages.filter(p => p.vehicle_type === 'car'), [packages]);
+  const errorRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
     plate: '',
     model: '',
@@ -34,6 +35,12 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
   const [manualTotalCost, setManualTotalCost] = useState<number | ''>('');
   const [isSearchingHistory, setIsSearchingHistory] = useState(false);
   const [autoFilledFromHistory, setAutoFilledFromHistory] = useState(false);
+
+  useEffect(() => {
+    if (formError && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [formError]);
   const formTopRef = useRef<HTMLDivElement>(null);
 
   const hasPackageSelected = useMemo(() => formData.selectedPackages.length > 0, [formData.selectedPackages]);
