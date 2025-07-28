@@ -151,12 +151,15 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
     const costResult = validateCost(totalCost);
     if (!costResult.isValid) newErrors.total_cost = costResult.error!;
 
-    if (formData.status === 'in-progress' && formData.crew.length === 0 && !hasPackageSelected) {
+    if (formData.status === 'in-progress' && formData.crew.length === 0) {
       newErrors.crew = 'Assign at least one crew member for cars "In Progress".';
     }
 
-    // Require at least one service or package
-    if (formData.selectedServices.length + formData.selectedPackages.length === 0) {
+    // Require at least one service or package for WAITING or IN-PROGRESS status
+    if (
+      (formData.status === 'waiting' || formData.status === 'in-progress') &&
+      formData.selectedServices.length + formData.selectedPackages.length === 0
+    ) {
       newErrors.services = 'Please select at least one service or package.';
     }
 
@@ -252,7 +255,10 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
     setFormData(prev => ({
       ...prev,
       selectedPackages: newSelectedPackages,
-      crew: newSelectedPackages.length > 0 ? [] : prev.crew,
+      crew:
+        prev.status === 'in-progress'
+          ? prev.crew
+          : newSelectedPackages.length > 0 ? [] : prev.crew,
     }));
   };
 
@@ -561,7 +567,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
           </div>
         </div>
 
-      {!hasPackageSelected && (
+      {formData.status === 'in-progress' && (
         <div className="mb-6">
           <label className="block text-lg font-bold mb-2 text-gray-800 dark:text-white">Assign Crew</label>
           <div className="p-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">

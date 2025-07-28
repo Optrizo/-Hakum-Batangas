@@ -232,6 +232,14 @@ const CustomerView: React.FC = () => {
       >
         {columns.map(column => {
           const sizeClass = getCardSizeClass(column.vehicles.length);
+          // Split vehicles into two columns if more than 5
+          let vehicleGroups: Array<Array<Car | Motor>> = [];
+          if (column.vehicles.length > 5) {
+            const mid = Math.ceil(column.vehicles.length / 2);
+            vehicleGroups = [column.vehicles.slice(0, mid), column.vehicles.slice(mid)];
+          } else {
+            vehicleGroups = [column.vehicles];
+          }
           return (
             <div
               key={column.title}
@@ -240,6 +248,8 @@ const CustomerView: React.FC = () => {
                 background: cardBg,
                 border: 'none',
                 boxShadow: isDark ? 'none' : '0 2px 16px rgba(24,26,32,0.12)',
+                maxHeight: 'calc(100vh - 140px)',
+                minHeight: 0,
                 overflow: 'visible',
               }}
             >
@@ -258,40 +268,46 @@ const CustomerView: React.FC = () => {
                 <div className="mt-1 h-1 rounded-full" style={{ backgroundColor: column.color }}></div>
               </div>
               <div
-                className="flex-grow flex flex-col gap-3 p-3 min-h-0"
+                className={`flex-grow flex ${vehicleGroups.length > 1 ? 'flex-row gap-4' : 'flex-col'} p-3 min-h-0`}
                 style={{
                   flex: 1,
                   minHeight: 0,
-                  overflow: 'visible',
-                  justifyContent: 'space-evenly',
+                  overflowY: 'auto',
+                  justifyContent: 'flex-start',
                 }}
               >
-                {column.vehicles.length > 0 ? (
-                  column.vehicles.map(v => (
-                    <div
-                      key={v.id}
-                      className={`rounded-lg mb-4 ${sizeClass}`}
-                      style={{
-                        background: cardBg,
-                        color: cardTextColor,
-                        border: 'none',
-                        boxShadow: isDark ? 'none' : '0 2px 16px rgba(24,26,32,0.12)',
-                        textShadow: isDark ? '0 2px 8px rgba(0,0,0,0.25)' : 'none',
-                        flex: 1,
-                        minHeight: 0,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <VehicleCard key={v.id} vehicle={v} sizeClass={sizeClass} plateColor={plateColor} />
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-500">No vehicles here</p>
+                {vehicleGroups.map((group, idx) => (
+                  <div key={idx} className={vehicleGroups.length > 1 ? 'flex flex-col flex-1 gap-3' : ''} style={{ minHeight: 0 }}>
+                    {group.length > 0 ? (
+                      group.map(v => (
+                        <div
+                          key={v.id}
+                          className={`rounded-lg mb-4 ${sizeClass}`}
+                          style={{
+                            background: 'transparent', // Always transparent
+                            color: cardTextColor,
+                            border: 'none',
+                            boxShadow: isDark ? 'none' : '0 2px 16px rgba(24,26,32,0.12)',
+                            textShadow: isDark ? '0 2px 8px rgba(0,0,0,0.25)' : 'none',
+                            minHeight: '80px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            flexShrink: 1,
+                            flexWrap: 'wrap',
+                            overflow: 'visible',
+                          }}
+                        >
+                          <VehicleCard key={v.id} vehicle={v} sizeClass={sizeClass} plateColor={plateColor} />
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <p className="text-gray-500">No vehicles here</p>
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
             </div>
           );
