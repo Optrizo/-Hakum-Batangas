@@ -341,10 +341,8 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       // Calculate queue number if status is waiting
       let queueNumber;
       if (statusToUse === 'waiting') {
-        queueNumber = cars
-          .filter(c => c.status === 'waiting')
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-          .length + 1;
+        const waitingCount = cars.filter(c => c.status === 'waiting').length;
+        queueNumber = waitingCount + 1;
       }
 
       // Send SMS notification if phone is provided

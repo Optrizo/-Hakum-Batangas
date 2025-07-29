@@ -345,8 +345,8 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       // Calculate queue number if status is waiting
       let queueNumber;
       if (formData.status === 'waiting') {
-        const allMotorcycles = motorcycles.filter(m => m.status === 'waiting');
-        queueNumber = allMotorcycles.length + 1;
+        const waitingCount = motorcycles.filter(m => m.status === 'waiting').length;
+        queueNumber = waitingCount + 1;
       }
 
       // Prepare service type string
