@@ -70,16 +70,36 @@ const CustomerView: React.FC = () => {
     { title: 'READY FOR PAYMENT', vehicles: activeVehicles.filter(v => v.status === 'payment-pending'), color: '#f59e0b' },
   ], [activeVehicles]);
 
-  // Dynamically adjust card size and font size based on vehicle count to fit everything on screen.
-  const getCardSizeClass = (count: number) => {
-    if (count <= 1) return 'p-4 text-3xl'; // Maximum size for single item
-    if (count <= 3) return 'p-3 text-2xl'; // Large for 2-3 items
-    if (count <= 5) return 'p-2 text-xl';  // Medium for 4-5 items
-    if (count <= 8) return 'p-2 text-lg';  // Smaller for 6-8 items
-    return 'p-1.5 text-base';              // Minimum size for 9+ items
+  // Dynamically adjust sizes based on vehicle count
+  const getSizeClasses = (count: number) => {
+    // Base on how many items we have to determine the optimal size
+    if (count <= 2) return {
+      plate: 'text-[2em]',
+      model: 'text-[1.1em]',
+      service: 'text-[1.2em]',
+      spacing: 'py-6 px-6 mb-6 gap-5'
+    };
+    if (count <= 4) return {
+      plate: 'text-[1.8em]',
+      model: 'text-[1em]',
+      service: 'text-[1.1em]',
+      spacing: 'py-5 px-5 mb-5 gap-4'
+    };
+    if (count <= 6) return {
+      plate: 'text-[1.6em]',
+      model: 'text-[0.9em]',
+      service: 'text-[1em]',
+      spacing: 'py-4 px-4 mb-4 gap-3'
+    };
+    return {
+      plate: 'text-[1.4em]',
+      model: 'text-[0.85em]',
+      service: 'text-[0.9em]',
+      spacing: 'py-3 px-3 mb-3 gap-2'
+    };
   };
 
-  const VehicleCard = ({ vehicle, sizeClass, plateColor }: { vehicle: Car | Motor, sizeClass: string, plateColor: string }) => {
+  const VehicleCard = ({ vehicle, plateColor, columnVehicleCount }: { vehicle: Car | Motor, plateColor: string, columnVehicleCount: number }) => {
     const isMotorcycle = 'vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle';
     const crewMembers = vehicle.crew?.map(id => crews.find(c => c.id === id)?.name).filter(Boolean) || [];
 
@@ -116,23 +136,19 @@ const CustomerView: React.FC = () => {
 
       if (badgeNames.length === 0) return null;
 
+      const sizes = getSizeClasses(columnVehicleCount);
       return badgeNames.map((name, idx) => (
         <span 
           key={`${name}-${idx}`} 
           className={`
             inline-flex items-center
-            ${isDark ? 'bg-blue-900/40 text-blue-200' : 'bg-blue-100/80 text-blue-900'}
-            backdrop-blur-sm
-            font-semibold tracking-wide
-            rounded-full border
-            ${isDark ? 'border-blue-800/50' : 'border-blue-200/80'}
-            px-3 py-0.5
-            text-[0.75em]
+            ${isDark ? 'text-emerald-300' : 'text-emerald-600'}
+            font-bold tracking-wider
+            ${sizes.service}
             transition-all duration-200
-            shadow-sm
           `}
           style={{
-            textShadow: isDark ? '0 1px 2px rgba(0,0,0,0.2)' : 'none'
+            textShadow: isDark ? '0 2px 4px rgba(0,0,0,0.3)' : '0 1px 2px rgba(0,0,0,0.1)'
           }}
         >
           {name}
@@ -140,50 +156,54 @@ const CustomerView: React.FC = () => {
       ));
     };
 
+    const sizes = getSizeClasses(columnVehicleCount);
+    
     return (
-      <div 
-        className={`rounded-xl flex flex-col justify-start gap-4 transition-all duration-300 ${sizeClass} mb-4`} 
-        style={{ background: 'transparent' }}
-      >
-        {/* Top section: Plate, Model, Crew */}
-        <div className="flex flex-row items-start justify-between w-full">
-          {/* Left part of top section: Icon, Plate, Model */}
-          <div className="flex items-center gap-3">
-            {isMotorcycle ?
-              <BikeIcon className={`h-6 w-6 ${textSecondary} flex-shrink-0`} /> :
-              <CarIcon className={`h-6 w-6 ${textSecondary} flex-shrink-0`} />
-            }
+      <div className={`${sizes.spacing} transition-all duration-300`}>
+        {/* Vehicle Info Section */}
+        <div className="flex items-center justify-between">
+          {/* Left: Icon and Plate */}
+          <div className="flex items-center space-x-3">
+            <div className={`flex-shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+              {isMotorcycle ? <BikeIcon className="h-6 w-6" /> : <CarIcon className="h-6 w-6" />}
+            </div>
             <div>
-              <p className="text-[1.4em] font-extrabold tracking-wide mb-0.5" style={{ color: plateColor }}>{vehicle.plate}</p>
-              <p className={`text-[0.8em] ${textSecondary}`}>{vehicle.model} ({vehicle.size})</p>
+              <p className={`${sizes.plate} font-black tracking-wider leading-none mb-1`}
+                style={{ 
+                  color: plateColor,
+                  textShadow: isDark ? '0 2px 4px rgba(0,0,0,0.3)' : '0 1px 2px rgba(0,0,0,0.1)'
+                }}
+              >
+                {vehicle.plate}
+              </p>
+              <p className={`${sizes.model} ${textSecondary} font-bold tracking-wide`}>
+                {vehicle.model} • {vehicle.size}
+              </p>
             </div>
           </div>
-          {/* Right part of top section: Crew */}
-          {crewMembers.length > 0 && !hasPackage && (
-            <div className="flex items-center gap-1.5 flex-wrap justify-end text-right ml-4">
-              <p className={`text-[0.7em] uppercase tracking-wider font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Crew</p>
+          
+          {/* Right: Crew Names */}
+          {crewMembers.length > 0 && (
+            <div className="flex items-center gap-2">
               {crewMembers.map(name => (
-                <span key={name} className={`
-                  inline-flex items-center
-                  ${isDark ? 'bg-gray-800/60 text-gray-200' : 'bg-blue-50/90 text-blue-900'}
-                  backdrop-blur-sm
-                  text-[0.75em] font-medium tracking-wide
-                  px-2 py-0.5 rounded-full
-                  border ${isDark ? 'border-gray-700/50' : 'border-blue-100/80'}
-                  shadow-sm
-                  transition-all duration-200
-                `}
-                style={{
-                  textShadow: isDark ? '0 1px 2px rgba(0,0,0,0.2)' : 'none'
-                }}
-                >{name}</span>
+                <span key={name} 
+                  className={`
+                    ${sizes.model} font-bold tracking-wider
+                    ${isDark ? 'text-blue-300' : 'text-blue-700'}
+                  `}
+                  style={{
+                    textShadow: isDark ? '0 1px 2px rgba(0,0,0,0.2)' : 'none'
+                  }}
+                >
+                  {name}
+                </span>
               ))}
             </div>
           )}
         </div>
 
-        {/* Bottom section: Service Badges */}
-        <div className="flex flex-wrap items-center gap-1.5 mt-2 w-full">
+        {/* Services/Packages */}
+        <div className={`flex flex-wrap pl-9 ${sizes.spacing}`}>
           {getServiceDisplay()}
         </div>
       </div>
@@ -244,7 +264,6 @@ const CustomerView: React.FC = () => {
         }}
       >
         {columns.map(column => {
-          const sizeClass = getCardSizeClass(column.vehicles.length);
           // Split vehicles into two columns if more than 5
           let vehicleGroups: Array<Array<Car | Motor>> = [];
           if (column.vehicles.length > 5) {
@@ -281,7 +300,7 @@ const CustomerView: React.FC = () => {
                 <div className="mt-1 h-1 rounded-full" style={{ backgroundColor: column.color }}></div>
               </div>
               <div
-                className={`flex-grow flex ${vehicleGroups.length > 1 ? 'flex-row gap-2' : 'flex-col'} p-2`}
+                className={`flex-grow flex ${vehicleGroups.length > 1 ? 'flex-row gap-4' : 'flex-col'} p-3`}
                 style={{
                   height: 'calc(100% - 60px)', // Account for header height
                   overflow: 'hidden',
@@ -289,12 +308,12 @@ const CustomerView: React.FC = () => {
                 }}
               >
                 {vehicleGroups.map((group, idx) => (
-                  <div key={idx} className={`${vehicleGroups.length > 1 ? 'flex flex-col flex-1 gap-2' : 'flex flex-col gap-2'}`} style={{ height: '100%' }}>
+                  <div key={idx} className={`${vehicleGroups.length > 1 ? 'flex flex-col flex-1 gap-4' : 'flex flex-col gap-4'}`} style={{ height: '100%' }}>
                     {group.length > 0 ? (
                       group.map(v => (
                         <div
                           key={v.id}
-                          className={`rounded-lg ${sizeClass}`}
+                          className="rounded-lg"
                           style={{
                             background: 'transparent',
                             color: cardTextColor,
@@ -307,7 +326,12 @@ const CustomerView: React.FC = () => {
                             minHeight: 0,
                           }}
                         >
-                          <VehicleCard key={v.id} vehicle={v} sizeClass={sizeClass} plateColor={plateColor} />
+                          <VehicleCard 
+                            key={v.id} 
+                            vehicle={v} 
+                            plateColor={plateColor} 
+                            columnVehicleCount={column.vehicles.length}
+                          />
                         </div>
                       ))
                     ) : (
