@@ -6,18 +6,23 @@ const router = express.Router();
 
 // Define the route handler with the callback pattern
 router.post('/send-sms', (req, res) => {
-  const { status, plateNumber, serviceType, phoneNumber } = req.body;
+  const { status, plateNumber, serviceType, phoneNumber, queueNumber } = req.body;
+  // Validate required fields
+  if (!status || !plateNumber || !phoneNumber) {
+    console.error(`[${new Date().toISOString()}] Missing required field(s):`, { status, plateNumber, phoneNumber });
+    return res.status(400).json({ error: 'Missing required field(s): status, plateNumber, phoneNumber are all required.' });
+  }
   try {
     console.log(`[${new Date().toISOString()}] Request received:`, req.body);
     console.log(`[${new Date().toISOString()}] Attempting to send SMS with the following details:`, {
       status,
       plateNumber,
       serviceType,
-      phoneNumber
+      phoneNumber,
+      queueNumber
     });
-    
-    // Using promise-based approach instead of async/await
-    sendSMS(status, plateNumber, serviceType, phoneNumber)
+    // Pass queueNumber for 'waiting', serviceType for 'in-progress', both for completeness
+    sendSMS(status, plateNumber, serviceType, phoneNumber, queueNumber)
       .then(() => {
         console.log(`[${new Date().toISOString()}] SMS sent successfully`);
         res.json({ success: true });

@@ -6,7 +6,7 @@ export default function handler(req, res) {
   // Log the request
   console.log(`[${new Date().toISOString()}] Request method: ${req.method}`);
   console.log(`[${new Date().toISOString()}] Request path: ${req.url}`);
-  
+
   // Only accept POST requests
   if (req.method !== 'POST') {
     console.log(`[${new Date().toISOString()}] Invalid method: ${req.method}`);
@@ -14,17 +14,17 @@ export default function handler(req, res) {
   }
 
   // Extract the data
-  const { status, plateNumber, serviceType, phoneNumber } = req.body;
+  const { status, plateNumber, serviceType, phoneNumber, queueNumber } = req.body;
   console.log(`[${new Date().toISOString()}] Request body:`, req.body);
-  
+
   // Validate required fields
-  if (!status || !plateNumber || !serviceType || !phoneNumber) {
+  if (!status || !plateNumber || !phoneNumber) {
     console.log(`[${new Date().toISOString()}] Missing required fields`);
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   // Send the SMS
-  return sendSMS(status, plateNumber, serviceType, phoneNumber)
+  return sendSMS(status, plateNumber, serviceType, phoneNumber, queueNumber)
     .then(() => {
       console.log(`[${new Date().toISOString()}] SMS sent successfully`);
       return res.status(200).json({ success: true });

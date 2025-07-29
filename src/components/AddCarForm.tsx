@@ -325,6 +325,7 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
         statusToUse = 'waiting';
         setFormError('All crew are currently busy. The car has been added to the waiting queue.');
       }
+      // Add the car
       await addCar({
         plate: formData.plate.toUpperCase().trim(),
         model: formData.model.trim(),
@@ -336,6 +337,30 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
         services: [...formData.selectedServices, ...formData.selectedPackages],
         total_cost: finalCost,
       });
+
+      // Calculate queue number if status is waiting
+      let queueNumber;
+      if (statusToUse === 'waiting') {
+        queueNumber = cars
+          .filter(c => c.status === 'waiting')
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+          .length + 1;
+      }
+
+      // Send SMS notification if phone is provided
+      if (formData.phone.trim()) {
+        await fetch('/api/send-sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: statusToUse,
+            plateNumber: formData.plate.toUpperCase().trim(),
+            serviceType: allServiceNames.join(', '),
+            phoneNumber: formData.phone.trim(),
+            queueNumber: statusToUse === 'waiting' ? queueNumber : undefined
+          })
+        });
+      }
       
       onComplete();
     } catch (error) {

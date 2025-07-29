@@ -43,23 +43,24 @@ export function convertPhoneNumber(phoneNumber) {
 
 /**
  * Send SMS using the Busybee Brandtxt API
- * @param {string} status - The status of the service (e.g., 'completed')
+ * @param {string} status - The status of the service (e.g., 'completed', 'waiting', etc.)
  * @param {string} plateNumber - The plate number of the car
- * @param {string} serviceType - The type of service performed
+ * @param {string} serviceType - The type of service performed (for in-progress)
  * @param {string} phoneNumber - The recipient's phone number
+ * @param {number} [queueNumber] - The queue number (for waiting status)
  * @returns {Promise<void>} Resolves when the SMS is sent successfully
  */
-export async function sendSMS(status, plateNumber, serviceType, phoneNumber) {
+export async function sendSMS(status, plateNumber, serviceType, phoneNumber, queueNumber) {
   // Log environment detection
   console.log('Environment detection - isNode:', isNode);
   console.log('Environment variables source:', isNode ? 'Node.js process.env' : 'Vite import.meta.env');
-  
+
   // Get API credentials with better logging
   const apiKey = getEnv('VITE_Api_Key');
   const clientId = getEnv('VITE_Client_Id');
   const senderId = getEnv('VITE_SenderID');
   const smsUrl = getEnv('VITE_CURL') || 'https://app.brandtxt.io/api/v2/SendSMS';
-  
+
   // Log credential presence (not the values themselves)
   console.log('API credentials check:', {
     apiKey: apiKey ? 'Present' : 'Missing',
@@ -68,13 +69,19 @@ export async function sendSMS(status, plateNumber, serviceType, phoneNumber) {
     smsUrl: smsUrl
   });
 
-  if (status !== 'completed') {
-    console.log('Service is not completed. No message will be sent.');
-    return;
-  }
-
   const convertedPhoneNumber = convertPhoneNumber(phoneNumber);
-  const message = `The service for your vehicle with plate number ${plateNumber} (${serviceType}) is now completed. You may pick it up at your convenience.`;
+
+  // Compose message based on status
+  let message = '';
+  if (status === 'waiting') {
+    message = `Hey your vehicle ${plateNumber} is ${queueNumber ? queueNumber : '?'} in the queue. Appreciate your patience for waiting.`;
+  } else if (status === 'in-progress') {
+    message = `We are now working on your vehicle (${plateNumber}), you availed our ${serviceType}.`;
+  } else if (status === 'payment-pending') {
+    message = `Our team leader just finished doing the final check on your vehicle. Its now ready for pickup and payment in our admin`;
+  } else if (status === 'completed') {
+    message = `Thank you for visiting Hakum Auto Care, wish you liked our service! Take care driving!`;
+  } 
 
   const payload = {
     SenderId: senderId,
@@ -91,7 +98,7 @@ export async function sendSMS(status, plateNumber, serviceType, phoneNumber) {
   // Debug payload before sending
   console.log('Sending SMS with payload:', JSON.stringify(payload, null, 2));
   console.log('Using SMS URL:', smsUrl);
-  
+
   try {
     if (axios) {
       // Node.js (axios)

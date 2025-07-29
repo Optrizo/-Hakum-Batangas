@@ -123,6 +123,50 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
     }
     try {
       setIsUpdating(true);
+      
+      // Prepare the service type information
+      let serviceType = '';
+      if ('vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle') {
+        const serviceNames = (vehicle.services || []).map(id => {
+          const s = services.find(s => s.id === id);
+          return s ? s.name : '';
+        }).filter(Boolean);
+        let packageName = '';
+        if (vehicle.package) {
+          const pkg = packages.find(p => p.id === vehicle.package || p.name === vehicle.package);
+          if (pkg) packageName = pkg.name;
+        }
+        serviceType = [...serviceNames, packageName].filter(Boolean).join(', ');
+      } else {
+        serviceType = (vehicle as Car).service || '';
+      }
+
+      // Calculate queue number for waiting status
+      let queueNumber = undefined;
+      if (newStatus === 'waiting') {
+        const allVehicles = isMotorcycle ? motorcycles : cars;
+        const waitingList = allVehicles
+          .filter(v => v.status === 'waiting')
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        queueNumber = waitingList.findIndex(v => v.id === vehicle.id) + 1;
+      }
+
+      // Send SMS for every status update except for cancelled status
+      if (newStatus !== 'cancelled') {
+        await fetch('/api/send-sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: newStatus,
+            plateNumber: vehicle.plate,
+            serviceType,
+            phoneNumber: vehicle.phone,
+            queueNumber
+          })
+        });
+      }
+
+      // Update the vehicle status in the database
       if (isMotorcycle) {
         const updates: Partial<Motor> = {
           status: newStatus as ServiceStatus,
@@ -135,38 +179,6 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
           updated_at: new Date().toISOString(),
         };
         await updateCar(vehicle.id, updates);
-      }
-      // Integration: Send SMS if status is completed
-      if (newStatus === 'completed') {
-        // Determine service type string
-        let serviceType = '';
-        if ('vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle') {
-          // For motorcycles, join service names and package name
-          const serviceNames = (vehicle.services || []).map(id => {
-            const s = services.find(s => s.id === id);
-            return s ? s.name : '';
-          }).filter(Boolean);
-          let packageName = '';
-          if (vehicle.package) {
-            const pkg = packages.find(p => p.id === vehicle.package || p.name === vehicle.package);
-            if (pkg) packageName = pkg.name;
-          }
-          serviceType = [...serviceNames, packageName].filter(Boolean).join(', ');
-        } else {
-          // For cars, use the service string
-          serviceType = (vehicle as Car).service || '';
-        }
-        // Call backend API to send SMS
-        await fetch('/api/send-sms', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            status: 'completed',
-            plateNumber: vehicle.plate,
-            serviceType,
-            phoneNumber: vehicle.phone
-          })
-        });
       }
       setIsAssigningCrew(false);
     } catch (error) {
@@ -211,6 +223,10 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
   const handleAssignCrew = async () => {
     try {
       setIsUpdating(true);
+      let newStatus = vehicle.status;
+      let statusChanged = false;
+
+      // Prepare updates
       if (isMotorcycle) {
         const updates: Partial<Motor> = {
           crew: selectedCrewIds,
@@ -218,6 +234,8 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
         };
         if (vehicle.status === 'waiting' && selectedCrewIds.length > 0) {
           updates.status = 'in-progress';
+          newStatus = 'in-progress';
+          statusChanged = true;
         }
         await updateMotorcycle(vehicle.id, updates);
       } else {
@@ -227,9 +245,45 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
         };
         if (vehicle.status === 'waiting' && selectedCrewIds.length > 0) {
           updates.status = 'in-progress';
+          newStatus = 'in-progress';
+          statusChanged = true;
         }
         await updateCar(vehicle.id, updates);
       }
+
+      // Send SMS if status changed to in-progress
+      if (statusChanged) {
+        // Prepare service type information
+        let serviceType = '';
+        if ('vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle') {
+          const serviceNames = (vehicle.services || []).map(id => {
+            const s = services.find(s => s.id === id);
+            return s ? s.name : '';
+          }).filter(Boolean);
+          let packageName = '';
+          if (vehicle.package) {
+            const pkg = packages.find(p => p.id === vehicle.package || p.name === vehicle.package);
+            if (pkg) packageName = pkg.name;
+          }
+          serviceType = [...serviceNames, packageName].filter(Boolean).join(', ');
+        } else {
+          serviceType = (vehicle as Car).service || '';
+        }
+
+        // Send SMS with all required fields
+        await fetch('/api/send-sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: newStatus,
+            plateNumber: vehicle.plate,
+            serviceType,
+            phoneNumber: vehicle.phone,
+            queueNumber: undefined // Not applicable for in-progress status
+          })
+        });
+      }
+
       setIsAssigningCrew(false);
       setShowCrewWarning(false);
     } catch (error) {

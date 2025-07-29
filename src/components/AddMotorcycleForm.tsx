@@ -16,7 +16,7 @@ interface AddMotorcycleFormProps {
 }
 
 const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => {
-  const { addMotorcycle, services, packages, crews, searchMotorcycleHistory } = useQueue();
+  const { addMotorcycle, services, packages, crews, searchMotorcycleHistory, motorcycles } = useQueue();
   
   const [formData, setFormData] = useState({
     plate: '',
@@ -341,6 +341,32 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       };
 
       await addMotorcycle(motorcycleData);
+
+      // Calculate queue number if status is waiting
+      let queueNumber;
+      if (formData.status === 'waiting') {
+        const allMotorcycles = motorcycles.filter(m => m.status === 'waiting');
+        queueNumber = allMotorcycles.length + 1;
+      }
+
+      // Prepare service type string
+      const serviceType = [...selectedServiceNames, ...selectedPackageNames].filter(Boolean).join(', ');
+
+      // Send SMS notification if phone is provided
+      if (formData.phone.trim()) {
+        await fetch('/api/send-sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: formData.status,
+            plateNumber: sanitizeInput(formData.plate).toUpperCase(),
+            serviceType,
+            phoneNumber: sanitizeInput(formData.phone.trim()),
+            queueNumber: formData.status === 'waiting' ? queueNumber : undefined
+          })
+        });
+      }
+
       onComplete();
     } catch (error) {
       console.error('Error adding motorcycle:', error);
