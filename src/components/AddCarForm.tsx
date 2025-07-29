@@ -338,10 +338,10 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
         total_cost: finalCost,
       });
 
-      // Calculate queue number if status is waiting
+      // Calculate queue number if status is waiting, excluding deleted vehicles
       let queueNumber;
       if (statusToUse === 'waiting') {
-        const waitingCount = cars.filter(c => c.status === 'waiting').length;
+        const waitingCount = cars.filter(c => c.status === 'waiting' && !c.is_deleted).length;
         queueNumber = waitingCount + 1;
       }
 

@@ -342,10 +342,10 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
 
       await addMotorcycle(motorcycleData);
 
-      // Calculate queue number if status is waiting
+      // Calculate queue number if status is waiting, excluding deleted vehicles
       let queueNumber;
       if (formData.status === 'waiting') {
-        const waitingCount = motorcycles.filter(m => m.status === 'waiting').length;
+        const waitingCount = motorcycles.filter(m => m.status === 'waiting' && !m.is_deleted).length;
         queueNumber = waitingCount + 1;
       }
 
