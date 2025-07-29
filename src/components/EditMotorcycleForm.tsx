@@ -4,52 +4,8 @@ import { Motor, MOTORCYCLE_SIZES, SERVICE_STATUSES, MotorcycleSizePricing } from
 import { 
   validateMotorcyclePlate,
   validateMotorcycleModel,
-  validatePhoneNumb    // F    const statusResult = validateServiceStatus(formData.status);
-    if (!statusResult.isValid) newErrors.status = statusResult.error!;
-
-    // Validate phone if provided
-    if (formData.phone.trim()) {
-      const phoneResult = validatePhoneNumber(formData.phone);
-      if (!phoneResult.isValid) newErrors.phone = phoneResult.error!;
-    }
-
-    // First check services/packages requirement for any status
-    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
-      newErrors.services = 'Please select at least one service or package.';
-      // If trying to set status to in-progress without services, add an additional error
-      if (formData.status === 'in-progress') {
-        newErrors.status = 'Cannot set status to In Progress without selecting services or packages.';
-      }
-    }
-
-    // Then check crew requirement for in-progress status
-    if (formData.status === 'in-progress') {
-      if (formData.crew.length === 0) {
-        newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
-      }
-      // Double-check services requirement for in-progress
-      if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
-        newErrors.status = 'Cannot set status to In Progress without selecting services or packages.';
-      }
-    }ices/packages - this is required regardless of status
-    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
-      newErrors.services = 'Please select at least one service or package.';
-      // If trying to set status to in-progress without services, add an additional error
-      if (formData.status === 'in-progress') {
-        newErrors.status = 'Cannot set status to In Progress without selecting services or packages.';
-      }
-    }
-
-    // Then validate crew if status is 'in-progress'
-    if (formData.status === 'in-progress') {
-      if (formData.crew.length === 0) {
-        newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
-      }
-      // Additional check: prevent status change if no services
-      if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
-        newErrors.status = 'Cannot set status to In Progress without selecting services or packages.';
-      }
-    }lidateCost,
+  validatePhoneNumber,
+  validateCost,
   validateMotorcycleSize,
   validateServiceStatus
 } from '../lib/validation';
@@ -260,18 +216,17 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check for services/packages first
-    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
-      setErrors(prev => ({ ...prev, services: 'Please select at least one service or package.' }));
-      setFormError('Please select at least one service or package.');
+    if (!validate()) {
       formTopRef.current?.scrollIntoView({ behavior: 'smooth' });
       return;
     }
 
-    // Then check all other validations
-    if (!validate()) {
+    // Always require at least one service or package selected
+    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
+      setErrors(prev => ({ ...prev, services: 'Please select at least one service or package.' }));
+      setFormError('Please select at least one service or package.');
       formTopRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setIsSubmitting(false);
       return;
     }
     
@@ -350,10 +305,12 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
       newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
     }
 
-    // Always require at least one service or package for any status (waiting or in-progress)
+    // Always require at least one service or package
     if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
       newErrors.services = 'Please select at least one service or package.';
     }
+
+    // Services and packages are now optional - no validation required
 
     setErrors(newErrors);
     setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the errors below.' : null);
@@ -535,7 +492,7 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
       <div className="pt-4 border-t border-border-light dark:border-border-dark">
         <div className="mb-4">
           <h4 className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
-            Services & Packages <span className="text-red-500">*</span>
+            Services & Packages <span className="text-gray-500 text-xs">(Optional)</span>
           </h4>
           <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
             Select or modify the services and packages for this motorcycle

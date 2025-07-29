@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useQueue } from '../context/QueueContext';
 import { Car, Motor } from '../types';
 import { Car as CarIcon, Bike as BikeIcon } from 'lucide-react';
+import HakumLogoBlue from '/Hakum V2 (Blue).png';
 import { useLocation, Navigate } from 'react-router-dom';
 
 // Rebuilt based on user feedback to be non-scrollable and to correctly display service names.
@@ -15,7 +16,6 @@ const CustomerView: React.FC = () => {
   const { cars, motorcycles, services, packages, crews, loading } = useQueue();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [theme, setTheme] = useState(() => localStorage.getItem('customerTheme') || 'dark');
-  const [containerHeight, setContainerHeight] = useState(window.innerHeight);
 
   console.log('CustomerView debug:', { loading, cars, motorcycles });
 
@@ -23,27 +23,17 @@ const CustomerView: React.FC = () => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     document.body.style.backgroundColor = theme === 'dark' ? '#111113' : '#f4f6fa';
     localStorage.setItem('customerTheme', theme);
-
-    const handleResize = () => {
-      setContainerHeight(window.innerHeight);
-    };
-    window.addEventListener('resize', handleResize);
-
     return () => {
       clearInterval(timer);
       document.body.style.backgroundColor = '';
-      window.removeEventListener('resize', handleResize);
     };
   }, [theme]);
 
   const isDark = theme === 'dark';
   const bgMain = isDark ? 'bg-[#111113]' : 'bg-[#f4f6fa]';
-  const bgCard = isDark ? 'bg-[#1e2129]' : 'bg-[#f8fafc]';
   const textSecondary = isDark ? 'text-gray-300' : 'text-gray-600';
   const textHeader = isDark ? 'text-blue-400' : 'text-blue-700';
-  const borderCard = isDark ? 'border border-[#23262f]' : 'border border-blue-100';
-
-  const cardBg = 'transparent';
+  
   const cardTextColor = isDark ? '#fff' : '#181a20';
   const overlayOpacity = isDark ? 0.5 : 0.7;
 
@@ -81,12 +71,15 @@ const CustomerView: React.FC = () => {
   ], [activeVehicles]);
 
   // Dynamically adjust card size and font size based on vehicle count to fit everything on screen.
-    const getCardSizeClass = (count: number) => {
-    if (count <= 3) return 'py-3 text-xl';
-    if (count <= 5) return 'py-2.5 text-lg';
-    if (count <= 8) return 'py-2 text-base';
-    return 'py-1.5 text-sm';
-  };  const VehicleCard = ({ vehicle, sizeClass, plateColor }: { vehicle: Car | Motor, sizeClass: string, plateColor: string }) => {
+  const getCardSizeClass = (count: number) => {
+    if (count <= 1) return 'p-4 text-3xl'; // Maximum size for single item
+    if (count <= 3) return 'p-3 text-2xl'; // Large for 2-3 items
+    if (count <= 5) return 'p-2 text-xl';  // Medium for 4-5 items
+    if (count <= 8) return 'p-2 text-lg';  // Smaller for 6-8 items
+    return 'p-1.5 text-base';              // Minimum size for 9+ items
+  };
+
+  const VehicleCard = ({ vehicle, sizeClass, plateColor }: { vehicle: Car | Motor, sizeClass: string, plateColor: string }) => {
     const isMotorcycle = 'vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle';
     const crewMembers = vehicle.crew?.map(id => crews.find(c => c.id === id)?.name).filter(Boolean) || [];
 
@@ -123,82 +116,75 @@ const CustomerView: React.FC = () => {
 
       if (badgeNames.length === 0) return null;
 
-
-
-      return (
-        <div className="flex flex-wrap gap-1">
-          {badgeNames.map((name, idx) => (
-            <span 
-              key={`${name}-${idx}`} 
-              className={`
-                inline-flex items-center
-                ${isDark ? 'bg-gray-800/70 text-gray-100' : 'bg-gray-100 text-gray-900'} 
-                font-medium 
-                ${activeVehicles.length <= 5 ? 'text-sm px-3 py-1' : 'text-[11px] px-2 py-0.5'}
-                rounded border ${isDark ? 'border-gray-700/50' : 'border-gray-200'}
-                whitespace-nowrap
-              `}
-            >
-              {name}
-            </span>
-          ))}
-        </div>
-      );
+      return badgeNames.map((name, idx) => (
+        <span 
+          key={`${name}-${idx}`} 
+          className={`
+            inline-flex items-center
+            ${isDark ? 'bg-blue-900/40 text-blue-200' : 'bg-blue-100/80 text-blue-900'}
+            backdrop-blur-sm
+            font-semibold tracking-wide
+            rounded-full border
+            ${isDark ? 'border-blue-800/50' : 'border-blue-200/80'}
+            px-3 py-0.5
+            text-[0.75em]
+            transition-all duration-200
+            shadow-sm
+          `}
+          style={{
+            textShadow: isDark ? '0 1px 2px rgba(0,0,0,0.2)' : 'none'
+          }}
+        >
+          {name}
+        </span>
+      ));
     };
 
     return (
-      // Use flex-col and justify-start for a professional, non-stretching layout
       <div 
-        className={`flex flex-col gap-1.5 ${sizeClass} mb-2`}
+        className={`rounded-xl flex flex-col justify-start gap-4 transition-all duration-300 ${sizeClass} mb-4`} 
+        style={{ background: 'transparent' }}
       >
         {/* Top section: Plate, Model, Crew */}
         <div className="flex flex-row items-start justify-between w-full">
           {/* Left part of top section: Icon, Plate, Model */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {isMotorcycle ?
-              <BikeIcon className={`h-5 w-5 ${textSecondary} flex-shrink-0`} /> :
-              <CarIcon className={`h-5 w-5 ${textSecondary} flex-shrink-0`} />
+              <BikeIcon className={`h-6 w-6 ${textSecondary} flex-shrink-0`} /> :
+              <CarIcon className={`h-6 w-6 ${textSecondary} flex-shrink-0`} />
             }
-            <div className="flex items-baseline gap-2">
-              <p className={`font-bold tracking-wide ${activeVehicles.length <= 5 ? 'text-[1.3em]' : 'text-[1.1em]'}`}
-                style={{ 
-                  color: plateColor,
-                  textShadow: isDark ? '0 1px 2px rgba(0,0,0,0.2)' : 'none'
-                }}
-              >
-                {vehicle.plate}
-              </p>
-              <p className={`${activeVehicles.length <= 5 ? 'text-base' : 'text-[0.85em]'} ${textSecondary}`}>
-                {vehicle.model} <span className="opacity-75">({vehicle.size})</span>
-              </p>
+            <div>
+              <p className="text-[1.4em] font-extrabold tracking-wide mb-0.5" style={{ color: plateColor }}>{vehicle.plate}</p>
+              <p className={`text-[0.8em] ${textSecondary}`}>{vehicle.model} ({vehicle.size})</p>
             </div>
           </div>
           {/* Right part of top section: Crew */}
           {crewMembers.length > 0 && !hasPackage && (
-            <div className="flex items-center gap-1.5 ml-auto">
-              <p className={`text-xs ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Crew:</p>
+            <div className="flex items-center gap-1.5 flex-wrap justify-end text-right ml-4">
+              <p className={`text-[0.7em] uppercase tracking-wider font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Crew</p>
               {crewMembers.map(name => (
-                <span 
-                  key={name} 
-                  className={`
-                    ${isDark ? 'bg-gray-800/70 text-gray-100' : 'bg-gray-100 text-gray-900'}
-                    ${activeVehicles.length <= 5 ? 'text-sm px-3 py-1' : 'text-[11px] px-2 py-0.5'} 
-                    font-medium rounded
-                    border ${isDark ? 'border-gray-700/50' : 'border-gray-200'}
-                  `}
-                >
-                  {name}
-                </span>
+                <span key={name} className={`
+                  inline-flex items-center
+                  ${isDark ? 'bg-gray-800/60 text-gray-200' : 'bg-blue-50/90 text-blue-900'}
+                  backdrop-blur-sm
+                  text-[0.75em] font-medium tracking-wide
+                  px-2 py-0.5 rounded-full
+                  border ${isDark ? 'border-gray-700/50' : 'border-blue-100/80'}
+                  shadow-sm
+                  transition-all duration-200
+                `}
+                style={{
+                  textShadow: isDark ? '0 1px 2px rgba(0,0,0,0.2)' : 'none'
+                }}
+                >{name}</span>
               ))}
             </div>
           )}
         </div>
 
         {/* Bottom section: Service Badges */}
-        <div className="w-full mt-2">
-          <div className="flex flex-wrap items-start gap-1.5 max-w-full">
-            {getServiceDisplay()}
-          </div>
+        <div className="flex flex-wrap items-center gap-1.5 mt-2 w-full">
+          {getServiceDisplay()}
         </div>
       </div>
     );
@@ -230,9 +216,9 @@ const CustomerView: React.FC = () => {
       className={`${bgMain} flex flex-col min-h-screen`}
     >
       {/* HEADER */}
-      <header className="flex justify-between items-center px-4 py-2 flex-shrink-0">
+      <header className="flex justify-between items-center mb-2 flex-shrink-0">
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setTheme(isDark ? 'light' : 'dark')} title="Toggle light/dark mode">
-          <img src="/Hakum V2 (Blue).png" alt="Hakum Logo" className="h-8 transition-all duration-300 group-active:scale-95" />
+          <img src={HakumLogoBlue} alt="Hakum Logo" className="h-8 transition-all duration-300 group-active:scale-95" />
           <h1
             className="text-lg font-bold tracking-wider"
             style={{ color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.25)' }}
@@ -249,7 +235,13 @@ const CustomerView: React.FC = () => {
           </p>
         </div>
       </header>
-      <main className="flex-grow grid grid-cols-3 gap-6 px-6 pb-6 h-[calc(100vh-60px)] max-h-[calc(100vh-60px)] overflow-hidden"
+      <main
+        className="flex-grow grid grid-cols-3 gap-4"
+        style={{
+          height: 'calc(100vh - 80px)', // Account for header height
+          overflow: 'hidden',
+          padding: '0.5rem',
+        }}
       >
         {columns.map(column => {
           const sizeClass = getCardSizeClass(column.vehicles.length);
@@ -266,67 +258,53 @@ const CustomerView: React.FC = () => {
               key={column.title}
               className="rounded-lg flex flex-col min-h-0 flex-1"
               style={{
-                background: cardBg,
+                background: 'transparent',
                 border: 'none',
-                boxShadow: isDark ? 'none' : '0 2px 16px rgba(24,26,32,0.12)',
-                maxHeight: 'calc(100vh - 140px)',
-                minHeight: 0,
-                overflow: 'visible',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
               }}
             >
-              <div className="px-4 pt-2 pb-2 flex-shrink-0">
-                <div className="flex justify-between items-center mb-2">
+              <div className="p-3 flex-shrink-0">
+                <div className="flex justify-between items-center">
                   <h2
-                    className={`font-bold tracking-widest ${column.vehicles.length <= 4 ? 'text-2xl' : 'text-xl'}`}
-                    style={{ 
-                      color: '#fff', 
-                      textShadow: '0 2px 12px rgba(0,0,0,0.4)',
-                      letterSpacing: '0.1em'
-                    }}
+                    className="text-lg font-bold tracking-widest"
+                    style={{ color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.25)' }}
                   >
                     {column.title}
                   </h2>
-                  <span 
-                    className={`text-white flex items-center justify-center rounded-full font-bold shadow-lg
-                      ${column.vehicles.length <= 4 ? 'w-9 h-9 text-xl' : 'w-7 h-7 text-lg'}`}
-                    style={{ 
-                      backgroundColor: column.color,
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                    }}
-                  >
+                  <span className="bg-gray-600 text-white w-7 h-7 flex items-center justify-center rounded-full font-bold text-base">
                     {column.vehicles.length}
                   </span>
                 </div>
-                <div className="h-1 rounded-full" style={{ backgroundColor: column.color }}></div>
+                <div className="mt-1 h-1 rounded-full" style={{ backgroundColor: column.color }}></div>
               </div>
               <div
-                className={`flex-grow flex ${vehicleGroups.length > 1 ? 'flex-row gap-3' : 'flex-col'} p-3 min-h-0`}
+                className={`flex-grow flex ${vehicleGroups.length > 1 ? 'flex-row gap-2' : 'flex-col'} p-2`}
                 style={{
-                  flex: 1,
-                  minHeight: 0,
+                  height: 'calc(100% - 60px)', // Account for header height
                   overflow: 'hidden',
-                  justifyContent: column.vehicles.length === 0 ? 'center' : 'flex-start'
+                  justifyContent: 'flex-start',
                 }}
               >
                 {vehicleGroups.map((group, idx) => (
-                  <div key={idx} className={vehicleGroups.length > 1 ? 'flex flex-col flex-1 gap-3' : ''} style={{ minHeight: 0 }}>
+                  <div key={idx} className={`${vehicleGroups.length > 1 ? 'flex flex-col flex-1 gap-2' : 'flex flex-col gap-2'}`} style={{ height: '100%' }}>
                     {group.length > 0 ? (
                       group.map(v => (
                         <div
                           key={v.id}
-                          className={`rounded-lg mb-3 ${sizeClass}`}
+                          className={`rounded-lg ${sizeClass}`}
                           style={{
                             background: 'transparent',
                             color: cardTextColor,
                             border: 'none',
                             textShadow: isDark ? '0 2px 8px rgba(0,0,0,0.25)' : 'none',
-                            minHeight: column.vehicles.length <= 4 ? '100px' : '80px',
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'center',
-                            flexGrow: column.vehicles.length <= 4 ? 1 : 0,
-                            flexShrink: 0,
-                            overflow: 'visible',
+                            flex: '1 1 0',
+                            minHeight: 0,
                           }}
                         >
                           <VehicleCard key={v.id} vehicle={v} sizeClass={sizeClass} plateColor={plateColor} />
