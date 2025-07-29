@@ -276,17 +276,24 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       if (!phoneResult.isValid) newErrors.phone = phoneResult.error!;
     }
 
-    // Require at least one service or package for WAITING or IN-PROGRESS status
-    if (
-      (formData.status === 'waiting' || formData.status === 'in-progress') &&
-      formData.selectedServices.length + formData.selectedPackages.length === 0
-    ) {
+    // First check services/packages requirement for any status
+    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
       newErrors.services = 'Please select at least one service or package.';
+      // If trying to set status to in-progress without services, add an additional error
+      if (formData.status === 'in-progress') {
+        newErrors.status = 'Cannot set status to In Progress without selecting services or packages.';
+      }
     }
 
-    // Validate crew if status is 'in-progress'
-    if (formData.status === 'in-progress' && formData.crew.length === 0 && !hasPackageSelected) {
-      newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
+    // Then check crew requirement for in-progress status
+    if (formData.status === 'in-progress') {
+      if (formData.crew.length === 0 && !hasPackageSelected) {
+        newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
+      }
+      // Double-check services requirement for in-progress
+      if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
+        newErrors.status = 'Cannot set status to In Progress without selecting services or packages.';
+      }
     }
 
     // Duplicate check for in-progress, waiting, or payment-pending
@@ -616,7 +623,7 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
             {/* Services Selection */}
             <div>
               <label className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-2">
-                Services <span className="text-gray-500 text-xs">(Optional)</span>
+                Services <span className="text-red-500">*</span>
               </label>
               <div className="max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-2 border border-border-light dark:border-border-dark">
                 {motorcycleServices.map(service => (
@@ -647,8 +654,11 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
             {/* Packages Selection */}
             <div>
               <label className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-2">
-                Packages <span className="text-gray-500 text-xs">(Optional)</span>
+                Packages <span className="text-red-500">*</span>
               </label>
+              <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark mb-2">
+                At least one service or package must be selected
+              </p>
               <div className="max-h-32 overflow-y-auto pr-2 rounded-md bg-background-light dark:bg-gray-900/50 p-2 border border-border-light dark:border-border-dark">
                 {motorcyclePackages.map(pkg => (
                   <label key={pkg.id} className="flex items-center justify-between cursor-pointer p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800">
