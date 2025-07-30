@@ -304,6 +304,11 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       newErrors.plate = 'A motorcycle with this license plate is already in the active queue (waiting, in-progress, or payment).';
     }
 
+    // Total cost must be >= 1
+    if (typeof formData.total_cost !== 'number' || isNaN(formData.total_cost) || formData.total_cost < 1) {
+      newErrors.total_cost = 'Total cost must be at least 1.';
+    }
+
     setErrors(newErrors);
     setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the following errors:' : null);
     return Object.keys(newErrors).length === 0;
@@ -318,6 +323,14 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       return;
     }
 
+    // Prevent submission if total_cost < 1
+    const finalCost = isCostOverridden && manualTotalCost !== '' ? Number(manualTotalCost) : calculatedCost;
+    if (isNaN(finalCost) || finalCost < 1) {
+      setFormError('Total cost must be at least 1.');
+      setIsSubmitting(false);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const motorcycleData = {
@@ -329,7 +342,7 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
         crew: formData.crew,
         services: formData.selectedServices,
         package: formData.selectedPackages[0] || undefined,
-        total_cost: isCostOverridden && manualTotalCost !== '' ? Number(manualTotalCost) : calculatedCost,
+        total_cost: finalCost,
         vehicle_type: 'motorcycle' as const
       };
 
@@ -403,6 +416,7 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="bg-surface-light dark:bg-surface-dark p-6 rounded-lg shadow-sm border border-border-light dark:border-border-dark">
         <div ref={formTopRef} />
+
         {formError && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
             <strong className="block mb-1">{formError}</strong>

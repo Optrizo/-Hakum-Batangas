@@ -310,7 +310,10 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
       newErrors.services = 'Please select at least one service or package.';
     }
 
-    // Services and packages are now optional - no validation required
+    // Total cost must be >= 1
+    if (typeof formData.total_cost !== 'number' || isNaN(formData.total_cost) || formData.total_cost < 1) {
+      newErrors.total_cost = 'Total cost must be at least 1.';
+    }
 
     setErrors(newErrors);
     setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the errors below.' : null);

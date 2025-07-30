@@ -70,7 +70,7 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
   const [isCostOverridden, setIsCostOverridden] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const formTopRef = useRef<HTMLDivElement>(null);
-  const [initialCost, setInitialCost] = useState(car.initialCost ?? car.total_cost ?? 0);
+  // Removed initialCost state, only use car.total_cost
 
   const hasPackageSelected = useMemo(() => formData.selectedPackages.length > 0, [formData.selectedPackages]);
 
@@ -115,9 +115,8 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
       total_cost: car.total_cost || 0,
     });
     setTotalCost(car.total_cost || 0);
-    setInitialCost(car.initialCost ?? car.total_cost ?? 0);
     setIsCostOverridden(false);
-  }, [car.id, car.initialCost, car.total_cost]);
+  }, [car.id, car.total_cost]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -150,6 +149,11 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
 
     const costResult = validateCost(totalCost);
     if (!costResult.isValid) newErrors.total_cost = costResult.error!;
+
+    // Total cost must be >= 1
+    if (typeof totalCost !== 'number' || isNaN(totalCost) || totalCost < 1) {
+      newErrors.total_cost = 'Total cost must be at least 1.';
+    }
 
     if (formData.status === 'in-progress' && formData.crew.length === 0) {
       newErrors.crew = 'Assign at least one crew member for cars "In Progress".';
@@ -307,9 +311,13 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
         formData.selectedPackages.length === 0
       ) {
         payload.total_cost = 0;
-        payload.initialCost = car.initialCost ?? car.total_cost ?? totalCost;
-      } else {
-        payload.initialCost = car.initialCost ?? car.total_cost ?? totalCost;
+      }
+
+      // Prevent submission if total_cost < 1
+      if (typeof payload.total_cost !== 'number' || isNaN(payload.total_cost) || payload.total_cost < 1) {
+        setFormError('Total cost must be at least 1.');
+        setIsSubmitting(false);
+        return;
       }
 
       await updateCar(car.id, payload);
@@ -672,8 +680,8 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
       </div>
 
       <p className="mt-2 font-semibold">TOTAL COST: ₱{totalCost}</p>
-      {formData.status === 'in-progress' && totalCost === 0 && (car.initialCost ?? car.total_cost ?? 0) > 0 && (
-        <p className="text-xs text-gray-400">Initial Cost: ₱{car.initialCost ?? car.total_cost ?? 0}</p>
+      {formData.status === 'in-progress' && totalCost === 0 && (car.total_cost ?? 0) > 0 && (
+        <p className="text-xs text-gray-400">Initial Cost: ₱{car.total_cost ?? 0}</p>
       )}
     </form>
   );

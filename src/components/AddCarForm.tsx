@@ -219,6 +219,12 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       newErrors.plate = 'A car with this license plate is already in the active queue (waiting, in-progress, or payment).';
     }
 
+    // Total cost must be >= 1
+    const finalCost = manualTotalCost !== '' ? Number(manualTotalCost) : totalCost;
+    if (isNaN(finalCost) || finalCost < 1) {
+      newErrors.total_cost = 'Total cost must be at least 1.';
+    }
+
     setErrors(newErrors);
     setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the following errors:' : null);
     if (newErrors.crew) {
@@ -329,8 +335,8 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       
       // Calculate final cost with validation
       const finalCost = manualTotalCost !== '' ? Number(manualTotalCost) : totalCost;
-      if (isNaN(finalCost) || finalCost < 0) {
-        throw new Error('Invalid total cost. Please enter a valid amount.');
+      if (isNaN(finalCost) || finalCost < 1) {
+        throw new Error('Total cost must be at least 1.');
       }
         
       // --- CREW BUSY LOGIC ---
