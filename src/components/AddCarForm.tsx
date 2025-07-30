@@ -336,6 +336,28 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
         services: [...formData.selectedServices, ...formData.selectedPackages],
         total_cost: finalCost,
       });
+
+      // Calculate queue number if status is waiting
+      let queueNumber;
+      if (statusToUse === 'waiting') {
+        const waitingCount = cars.filter(c => c.status === 'waiting' && !c.is_deleted).length;
+        queueNumber = waitingCount + 1;
+      }
+
+      // Send SMS notification if phone is provided
+      if (formData.phone.trim()) {
+        await fetch('/api/send-sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: statusToUse,
+            plateNumber: formData.plate.toUpperCase().trim(),
+            serviceType: allServiceNames.join(', '),
+            phoneNumber: formData.phone.trim(),
+            queueNumber: statusToUse === 'waiting' ? queueNumber : undefined
+          })
+        });
+      }
       
       onComplete();
     } catch (error) {

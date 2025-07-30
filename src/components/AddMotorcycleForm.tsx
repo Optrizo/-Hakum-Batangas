@@ -16,7 +16,7 @@ interface AddMotorcycleFormProps {
 }
 
 const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => {
-  const { addMotorcycle, services, packages, crews, searchMotorcycleHistory } = useQueue();
+  const { addMotorcycle, services, packages, crews, searchMotorcycleHistory, motorcycles } = useQueue();
   
   const [formData, setFormData] = useState({
     plate: '',
@@ -319,6 +319,39 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       };
 
       await addMotorcycle(motorcycleData);
+
+      // Calculate queue number if status is waiting
+      let queueNumber;
+      if (motorcycleData.status === 'waiting') {
+        // Get all waiting motorcycles that aren't deleted
+        const allMotorcycles = motorcycles || [];
+        const waitingCount = allMotorcycles.filter((m: { status: string; is_deleted?: boolean }) => 
+          m.status === 'waiting' && !m.is_deleted
+        ).length;
+        queueNumber = waitingCount + 1;
+      }
+
+      // Send SMS notification if phone is provided
+      if (motorcycleData.phone) {
+        // Combine services into a readable string for SMS
+        const serviceType = [
+          ...(motorcycleData.services || []),
+          motorcycleData.package
+        ].filter(Boolean).join(', ');
+
+        await fetch('/api/send-sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: motorcycleData.status,
+            plateNumber: motorcycleData.plate,
+            serviceType,
+            phoneNumber: motorcycleData.phone,
+            queueNumber: motorcycleData.status === 'waiting' ? queueNumber : undefined
+          })
+        });
+      }
+
       onComplete();
     } catch (error) {
       console.error('Error adding motorcycle:', error);

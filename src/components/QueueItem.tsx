@@ -145,10 +145,9 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
       let queueNumber = undefined;
       if (newStatus === 'waiting') {
         const allVehicles = isMotorcycle ? motorcycles : cars;
-        const waitingList = allVehicles
-          .filter(v => v.status === 'waiting')
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        queueNumber = waitingList.findIndex(v => v.id === vehicle.id) + 1;
+        // Filter out deleted vehicles and count only those in waiting status
+        const waitingCount = allVehicles.filter(v => v.status === 'waiting' && !v.is_deleted).length;
+        queueNumber = waitingCount;
       }
 
       // Send SMS for every status update except for cancelled status
