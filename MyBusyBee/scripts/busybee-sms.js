@@ -78,7 +78,7 @@ export async function sendSMS(status, plateNumber, serviceType, phoneNumber, que
   } else if (status === 'in-progress') {
     message = `We are now working on your vehicle (${plateNumber}), you availed our ${serviceType}.`;
   } else if (status === 'payment-pending') {
-    message = `Our team leader just finished doing the final check on your vehicle. Its now ready for pickup and payment in our admin`;
+    message = `Our team leader just finished doing the final check on your vehicle. Its now ready for pickup and payment in our admin.`;
   } else if (status === 'completed') {
     message = `Thank you for visiting Hakum Auto Care, wish you liked our service! Take care driving!`;
   } 
