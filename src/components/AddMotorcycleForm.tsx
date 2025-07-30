@@ -92,23 +92,38 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   useEffect(() => {
     const searchHistory = async () => {
       const platePattern = /^[0-9]{3}-[A-Z]{3}$/;
-      if (platePattern.test(formData.plate)) {
-        setIsSearchingHistory(true);
-        try {
-          const history = await searchMotorcycleHistory(formData.plate);
-          if (history) {
-            setFormData(prev => ({
-              ...prev,
-              model: history.model,
-              phone: history.phone || '',
-              size: history.size
-            }));
-            setAutoFilledFromHistory(true);
+      const plateInput = formData.plate.toUpperCase();
+      if (platePattern.test(plateInput)) {
+        // Check for a complete match in the motorcycles list
+        const match = motorcycles.find(m => m.plate.trim().toUpperCase() === plateInput);
+        if (match) {
+          setIsSearchingHistory(true);
+          setAutoFilledFromHistory(false);
+          try {
+            const history = await searchMotorcycleHistory(formData.plate);
+            if (history) {
+              setFormData(prev => ({
+                ...prev,
+                model: history.model,
+                phone: history.phone || '',
+                size: history.size
+              }));
+              setAutoFilledFromHistory(true);
+            }
+          } catch (error) {
+            console.error('Error searching motorcycle history:', error);
+          } finally {
+            setIsSearchingHistory(false);
           }
-        } catch (error) {
-          console.error('Error searching motorcycle history:', error);
-        } finally {
-          setIsSearchingHistory(false);
+        } else {
+          setAutoFilledFromHistory(false);
+          // If plate is not a complete match, clear autofilled fields
+          setFormData(prev => ({
+            ...prev,
+            model: '',
+            phone: '',
+            size: 'small',
+          }));
         }
       } else {
         setAutoFilledFromHistory(false);
@@ -124,7 +139,7 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
 
     const timeoutId = setTimeout(searchHistory, 500);
     return () => clearTimeout(timeoutId);
-  }, [formData.plate, searchMotorcycleHistory]);
+  }, [formData.plate, searchMotorcycleHistory, motorcycles]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

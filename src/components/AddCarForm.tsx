@@ -109,24 +109,38 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
     const searchHistory = async () => {
       // Only trigger if plate is a valid, complete Philippine car plate
       const platePattern = /^[A-Z]{3}-?\d{3,4}$/;
-      if (platePattern.test(formData.plate.toUpperCase())) {
-        setIsSearchingHistory(true);
-        setAutoFilledFromHistory(false);
-        try {
-          const historyCar = await searchCarHistory(formData.plate);
-          if (historyCar) {
-            setFormData(prev => ({
-              ...prev,
-              model: historyCar.model,
-              phone: historyCar.phone || '',
-              size: historyCar.size
-            }));
-            setAutoFilledFromHistory(true);
+      const plateInput = formData.plate.toUpperCase();
+      if (platePattern.test(plateInput)) {
+        // Check for a complete match in the cars list
+        const match = cars.find(c => c.plate.trim().toUpperCase() === plateInput);
+        if (match) {
+          setIsSearchingHistory(true);
+          setAutoFilledFromHistory(false);
+          try {
+            const historyCar = await searchCarHistory(formData.plate);
+            if (historyCar) {
+              setFormData(prev => ({
+                ...prev,
+                model: historyCar.model,
+                phone: historyCar.phone || '',
+                size: historyCar.size
+              }));
+              setAutoFilledFromHistory(true);
+            }
+          } catch (error) {
+            console.error('❌ Error during auto-completion:', error);
+          } finally {
+            setIsSearchingHistory(false);
           }
-        } catch (error) {
-          console.error('❌ Error during auto-completion:', error);
-        } finally {
-          setIsSearchingHistory(false);
+        } else {
+          setAutoFilledFromHistory(false);
+          // If plate is not a complete match, clear autofilled fields
+          setFormData(prev => ({
+            ...prev,
+            model: '',
+            phone: '',
+            size: 'medium',
+          }));
         }
       } else {
         setAutoFilledFromHistory(false);
@@ -143,7 +157,7 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
     // Debounce the search to avoid too many API calls
     const timeoutId = setTimeout(searchHistory, 500);
     return () => clearTimeout(timeoutId);
-  }, [formData.plate, searchCarHistory]);
+  }, [formData.plate, searchCarHistory, cars]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
