@@ -243,7 +243,7 @@ const CustomerView: React.FC = () => {
             className="text-lg font-bold tracking-wider"
             style={{ color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.25)' }}
           >
-            HAKUM AUTO CARE
+            HAKUM AUTO CARE BATANGAS
           </h1>
         </div>
         <div className="text-right">
