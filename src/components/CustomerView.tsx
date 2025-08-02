@@ -5,8 +5,6 @@ import { Car as CarIcon, Bike as BikeIcon } from 'lucide-react';
 import HakumLogoBlue from '/Hakum V2 (Blue).png';
 import { useLocation, Navigate } from 'react-router-dom';
 
-// Rebuilt based on user feedback to be non-scrollable and to correctly display service names.
-
 const CustomerView: React.FC = () => {
   const location = useLocation();
   // Kiosk mode: if not on /customer, redirect to /customer
@@ -15,27 +13,20 @@ const CustomerView: React.FC = () => {
   }
   const { cars, motorcycles, services, packages, crews, loading } = useQueue();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [theme, setTheme] = useState(() => localStorage.getItem('customerTheme') || 'dark');
 
   console.log('CustomerView debug:', { loading, cars, motorcycles });
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    document.body.style.backgroundColor = theme === 'dark' ? '#111113' : '#f4f6fa';
-    localStorage.setItem('customerTheme', theme);
+    document.body.style.backgroundColor = '#111113';
     return () => {
       clearInterval(timer);
       document.body.style.backgroundColor = '';
     };
-  }, [theme]);
+  }, []);
 
-  const isDark = theme === 'dark';
-  const bgMain = isDark ? 'bg-[#111113]' : 'bg-[#f4f6fa]';
-  const textSecondary = isDark ? 'text-gray-300' : 'text-gray-600';
-  const textHeader = isDark ? 'text-blue-400' : 'text-blue-700';
-  
-  const cardTextColor = isDark ? '#fff' : '#181a20';
-  const overlayOpacity = isDark ? 0.5 : 0.7;
+  const cardTextColor = '#fff';
+  const overlayOpacity = 0.5;
 
   // Correctly find service/package names, falling back to '...' instead of the raw ID.
   const getServiceName = (id: string) => services.find(s => s.id === id)?.name || '...';
@@ -48,12 +39,9 @@ const CustomerView: React.FC = () => {
     return combined
       .filter(v => {
         const isMotorcycle = 'vehicle_type' in v && v.vehicle_type === 'motorcycle';
-        const hasPackage = isMotorcycle
-          ? !!v.package
-          : packages.some(p => p.name === (v as Car).service);
         const isActiveStatus = ['waiting', 'in-progress', 'payment-pending'].includes(v.status);
         if (!isActiveStatus) return false;
-        if (hasPackage) {
+        if (isMotorcycle) {
           // Show package vehicles until completed/cancelled
           return v.status !== 'completed' && v.status !== 'cancelled';
         } else {
@@ -103,14 +91,6 @@ const CustomerView: React.FC = () => {
     const isMotorcycle = 'vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle';
     const crewMembers = vehicle.crew?.map(id => crews.find(c => c.id === id)?.name).filter(Boolean) || [];
 
-    const hasPackage = (() => {
-      if (isMotorcycle) {
-        return !!(vehicle as Motor).package;
-      }
-      const carService = (vehicle as Car).service;
-      return packages.some(p => p.name === carService);
-    })();
-
     // Refactored to return an array of badge elements for both cars and motorcycles
     const getServiceDisplay = () => {
       let badgeNames: string[] = [];
@@ -142,13 +122,13 @@ const CustomerView: React.FC = () => {
           key={`${name}-${idx}`} 
           className={`
             inline-flex items-center
-            ${isDark ? 'text-emerald-300' : 'text-emerald-600'}
+            text-emerald-300
             font-bold tracking-wider
             ${sizes.service}
             transition-all duration-200
           `}
           style={{
-            textShadow: isDark ? '0 2px 4px rgba(0,0,0,0.3)' : '0 1px 2px rgba(0,0,0,0.1)'
+            textShadow: '0 2px 4px rgba(0,0,0,0.3)'
           }}
         >
           {name}
@@ -164,19 +144,19 @@ const CustomerView: React.FC = () => {
         <div className="flex items-center justify-between">
           {/* Left: Icon and Plate */}
           <div className="flex items-center space-x-3">
-            <div className={`flex-shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+            <div className="flex-shrink-0 text-blue-400">
               {isMotorcycle ? <BikeIcon className="h-6 w-6" /> : <CarIcon className="h-6 w-6" />}
             </div>
             <div>
               <p className={`${sizes.plate} font-black tracking-wider leading-none mb-1`}
                 style={{ 
                   color: plateColor,
-                  textShadow: isDark ? '0 2px 4px rgba(0,0,0,0.3)' : '0 1px 2px rgba(0,0,0,0.1)'
+                  textShadow: '0 2px 4px rgba(0,0,0,0.3)'
                 }}
               >
                 {vehicle.plate}
               </p>
-              <p className={`${sizes.model} ${textSecondary} font-bold tracking-wide`}>
+              <p className="text-[0.9em] text-gray-300 font-bold tracking-wide">
                 {vehicle.model} • {vehicle.size}
               </p>
             </div>
@@ -187,12 +167,9 @@ const CustomerView: React.FC = () => {
             <div className="flex items-center gap-2">
               {crewMembers.map(name => (
                 <span key={name} 
-                  className={`
-                    ${sizes.model} font-bold tracking-wider
-                    ${isDark ? 'text-blue-300' : 'text-blue-700'}
-                  `}
+                  className="text-[0.9em] font-bold tracking-wider text-blue-300"
                   style={{
-                    textShadow: isDark ? '0 1px 2px rgba(0,0,0,0.2)' : 'none'
+                    textShadow: '0 1px 2px rgba(0,0,0,0.2)'
                   }}
                 >
                   {name}
@@ -203,7 +180,7 @@ const CustomerView: React.FC = () => {
         </div>
 
         {/* Services/Packages */}
-        <div className={`flex flex-wrap pl-9 ${sizes.spacing}`}>
+        <div className="flex flex-wrap pl-9 ${sizes.spacing}">
           {getServiceDisplay()}
         </div>
       </div>
@@ -214,14 +191,14 @@ const CustomerView: React.FC = () => {
 
   if (loading) {
     return (
-      <div className={`${bgMain} h-screen w-screen flex items-center justify-center`}>
+      <div className="bg-[#111113] h-screen w-screen flex items-center justify-center">
         <h1 className="text-4xl text-blue-400 font-bold">Loading Queue...</h1>
         <div style={{color: 'red'}}>DEBUG: Loading...</div>
       </div>
     );
   }
 
-  const plateColor = isDark ? '#fff' : '#181a20';
+  const plateColor = '#fff';
 
   return (
     <div
@@ -233,11 +210,11 @@ const CustomerView: React.FC = () => {
         color: cardTextColor,
         transition: 'background 0.3s',
       }}
-      className={`${bgMain} flex flex-col min-h-screen`}
+      className="bg-[#111113] flex flex-col min-h-screen"
     >
       {/* HEADER */}
       <header className="flex justify-between items-center mb-2 flex-shrink-0">
-        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setTheme(isDark ? 'light' : 'dark')} title="Toggle light/dark mode">
+        <div className="flex items-center gap-3 cursor-pointer group" title="Hakum Auto Care">
           <img src={HakumLogoBlue} alt="Hakum Logo" className="h-8 transition-all duration-300 group-active:scale-95" />
           <h1
             className="text-lg font-bold tracking-wider"
@@ -247,8 +224,8 @@ const CustomerView: React.FC = () => {
           </h1>
         </div>
         <div className="text-right">
-          <p className={`text-xl font-bold ${textHeader}`}>LIVE QUEUE</p>
-          <p className={`${textSecondary} text-xs`}>
+          <p className="text-xl font-bold text-blue-400">LIVE QUEUE</p>
+          <p className="text-gray-300 text-xs">
             {currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
             {' | '}
             {currentTime.toLocaleTimeString()}
@@ -318,7 +295,7 @@ const CustomerView: React.FC = () => {
                             background: 'transparent',
                             color: cardTextColor,
                             border: 'none',
-                            textShadow: isDark ? '0 2px 8px rgba(0,0,0,0.25)' : 'none',
+                            textShadow: '0 2px 8px rgba(0,0,0,0.25)',
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'center',
