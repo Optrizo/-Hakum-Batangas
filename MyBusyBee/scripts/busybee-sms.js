@@ -41,6 +41,65 @@ export function convertPhoneNumber(phoneNumber) {
   return cleaned;
 }
 
+// Message pools for variety
+const messageTemplates = {
+  waiting: [
+    `Hey! Your vehicle ${'{plateNumber}'} is ${'{queueNumber}'} in the queue. Appreciate your patience for waiting.`,
+    `Hi there! Your car ${'{plateNumber}'} is currently ${'{queueNumber}'} in line. Thanks for your patience!`,
+    `Hello! Vehicle ${'{plateNumber}'} is ${'{queueNumber}'} in our service queue. We'll get to you soon!`,
+    `Good day! Your vehicle ${'{plateNumber}'} is ${'{queueNumber}'} waiting to be serviced. Thank you for waiting patiently.`,
+    `Greetings! Your car ${'{plateNumber}'} is ${'{queueNumber}'} in our queue. We appreciate your understanding while you wait.`
+  ],
+  'in-progress': [
+    `We are now working on your vehicle (${'{plateNumber}'}), you availed our ${'{serviceType}'}.`,
+    `Great news! We've started servicing your vehicle ${'{plateNumber}'} with our ${'{serviceType}'} service.`,
+    `Your vehicle ${'{plateNumber}'} is now being serviced! Our team is working on your ${'{serviceType}'}.`,
+    `We're currently working on your car ${'{plateNumber}'}. Your ${'{serviceType}'} service is in progress.`,
+    `Good news! Your vehicle ${'{plateNumber}'} is now under our care for the ${'{serviceType}'} service.`
+  ],
+  'payment-pending': [
+    `Our team leader just finished doing the final check on your vehicle. It's now ready for pickup and payment in our admin.`,
+    `Great news! Your vehicle has passed our final inspection and is ready for pickup. Please proceed to admin for payment.`,
+    `Your car is all set! Final quality check completed. Please come to our admin office for payment and pickup.`,
+    `Excellent! Your vehicle has been thoroughly checked and is ready. Kindly visit our admin for payment processing.`,
+    `Your vehicle service is complete! Final inspection done. Please head to our admin area for payment and pickup.`
+  ],
+  completed: [
+    `Thank you for visiting Hakum Auto Care, wish you liked our service! Take care driving!`,
+    `Thank you for choosing Hakum Auto Care! We hope you're satisfied with our service. Drive safely!`,
+    `It was a pleasure serving you at Hakum Auto Care! Hope you enjoyed our service. Safe travels!`,
+    `Thanks for trusting Hakum Auto Care with your vehicle! We hope you loved our service. Drive safe!`,
+    `Thank you for your business! We're glad we could serve you at Hakum Auto Care. Take care on the road!`,
+    `Appreciate your visit to Hakum Auto Care! Hope our service exceeded your expectations. Drive safely!`
+  ]
+};
+
+/**
+ * Get a random message template for the given status
+ * @param {string} status - The status type
+ * @param {string} plateNumber - The plate number
+ * @param {string} serviceType - The service type (for in-progress status)
+ * @param {number|string} queueNumber - The queue number (for waiting status)
+ * @returns {string} A randomly selected and formatted message
+ */
+function getRandomMessage(status, plateNumber, serviceType, queueNumber) {
+  const templates = messageTemplates[status];
+  if (!templates || templates.length === 0) {
+    return `Status update for vehicle ${plateNumber}`;
+  }
+  
+  // Select random template
+  const randomIndex = Math.floor(Math.random() * templates.length);
+  let selectedTemplate = templates[randomIndex];
+  
+  // Replace placeholders
+  selectedTemplate = selectedTemplate.replace(/\$\{'\{plateNumber\}'\}/g, plateNumber);
+  selectedTemplate = selectedTemplate.replace(/\$\{'\{serviceType\}'\}/g, serviceType || '');
+  selectedTemplate = selectedTemplate.replace(/\$\{'\{queueNumber\}'\}/g, queueNumber || '?');
+  
+  return selectedTemplate;
+}
+
 /**
  * Send SMS using the Busybee Brandtxt API
  * @param {string} status - The status of the service (e.g., 'completed', 'waiting', etc.)
@@ -71,17 +130,6 @@ export async function sendSMS(status, plateNumber, serviceType, phoneNumber, que
 
   const convertedPhoneNumber = convertPhoneNumber(phoneNumber);
 
-  // Compose message based on status
-  let message = '';
-  if (status === 'waiting') {
-    message = `Hey your vehicle ${plateNumber} is ${queueNumber ? queueNumber : '?'} in the queue. Appreciate your patience for waiting.`;
-  } else if (status === 'in-progress') {
-    message = `We are now working on your vehicle (${plateNumber}), you availed our ${serviceType}.`;
-  } else if (status === 'payment-pending') {
-    message = `Our team leader just finished doing the final check on your vehicle. Its now ready for pickup and payment in our admin.`;
-  } else if (status === 'completed') {
-    message = `Thank you for visiting Hakum Auto Care, wish you liked our service! Take care driving!`;
-  } 
 
   const payload = {
     SenderId: senderId,
