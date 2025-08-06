@@ -44,18 +44,18 @@ export function convertPhoneNumber(phoneNumber) {
 // Message pools for variety
 const messageTemplates = {
   waiting: [
-    `Hey! Your vehicle ${'{plateNumber}'} is ${'{queueNumber}'} in the queue. Appreciate your patience for waiting.`,
-    `Hi there! Your car ${'{plateNumber}'} is currently ${'{queueNumber}'} in line. Thanks for your patience!`,
-    `Hello! Vehicle ${'{plateNumber}'} is ${'{queueNumber}'} in our service queue. We'll get to you soon!`,
-    `Good day! Your vehicle ${'{plateNumber}'} is ${'{queueNumber}'} waiting to be serviced. Thank you for waiting patiently.`,
-    `Greetings! Your car ${'{plateNumber}'} is ${'{queueNumber}'} in our queue. We appreciate your understanding while you wait.`
+    `Hey! Your vehicle {plateNumber} is {queueNumber} in the queue. Appreciate your patience for waiting.`,
+    `Hi there! Your car {plateNumber} is currently {queueNumber} in line. Thanks for your patience!`,
+    `Hello! Vehicle {plateNumber} is {queueNumber} in our service queue. We'll get to you soon!`,
+    `Good day! Your vehicle {plateNumber} is {queueNumber} waiting to be serviced. Thank you for waiting patiently.`,
+    `Greetings! Your car {plateNumber} is {queueNumber} in our queue. We appreciate your understanding while you wait.`
   ],
   'in-progress': [
-    `We are now working on your vehicle (${'{plateNumber}'}), you availed our ${'{serviceType}'}.`,
-    `Great news! We've started servicing your vehicle ${'{plateNumber}'} with our ${'{serviceType}'} service.`,
-    `Your vehicle ${'{plateNumber}'} is now being serviced! Our team is working on your ${'{serviceType}'}.`,
-    `We're currently working on your car ${'{plateNumber}'}. Your ${'{serviceType}'} service is in progress.`,
-    `Good news! Your vehicle ${'{plateNumber}'} is now under our care for the ${'{serviceType}'} service.`
+    `We are now working on your vehicle ({plateNumber}), you availed our {serviceType}.`,
+    `Great news! We've started servicing your vehicle {plateNumber} with our {serviceType} service.`,
+    `Your vehicle {plateNumber} is now being serviced! Our team is working on your {serviceType}.`,
+    `We're currently working on your car {plateNumber}. Your {serviceType} service is in progress.`,
+    `Good news! Your vehicle {plateNumber} is now under our care for the {serviceType} service.`
   ],
   'payment-pending': [
     `Our team leader just finished doing the final check on your vehicle. It's now ready for pickup and payment in our admin.`,
@@ -93,9 +93,9 @@ function getRandomMessage(status, plateNumber, serviceType, queueNumber) {
   let selectedTemplate = templates[randomIndex];
   
   // Replace placeholders
-  selectedTemplate = selectedTemplate.replace(/\$\{'\{plateNumber\}'\}/g, plateNumber);
-  selectedTemplate = selectedTemplate.replace(/\$\{'\{serviceType\}'\}/g, serviceType || '');
-  selectedTemplate = selectedTemplate.replace(/\$\{'\{queueNumber\}'\}/g, queueNumber || '?');
+  selectedTemplate = selectedTemplate.replace(/\{plateNumber\}/g, plateNumber);
+  selectedTemplate = selectedTemplate.replace(/\{serviceType\}/g, serviceType || '');
+  selectedTemplate = selectedTemplate.replace(/\{queueNumber\}/g, queueNumber || '?');
   
   return selectedTemplate;
 }
