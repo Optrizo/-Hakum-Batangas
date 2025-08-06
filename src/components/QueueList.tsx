@@ -39,17 +39,18 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
   }, [showCalendar]);
 
   const filteredVehicles = useMemo(() => {
-    return vehicles.filter(vehicle => {
-      const matchesSearch = 
-        vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ('service' in vehicle ? vehicle.service.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
-        vehicle.phone?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = statusFilter === 'all' || vehicle.status === statusFilter;
+    return vehicles
+      .filter(vehicle => {
+        const matchesSearch = 
+          vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) || 
+          vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          ('service' in vehicle ? vehicle.service.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+          vehicle.phone?.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        const matchesStatus = statusFilter === 'all' || vehicle.status === statusFilter;
 
-      const vehicleDate = new Date(vehicle.created_at);
-      const today = new Date();
+        const vehicleDate = new Date(vehicle.created_at);
+        const today = new Date();
       
       let matchesDate = false;
       if (dateFilter === 'today') {
@@ -62,7 +63,8 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
       }
       
       return matchesSearch && matchesStatus && matchesDate;
-    });
+    })
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   }, [vehicles, searchTerm, statusFilter, dateFilter, selectedDate]);
 
   // Get vehicles filtered by date only (for statistics)
