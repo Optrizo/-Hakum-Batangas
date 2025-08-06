@@ -43,7 +43,7 @@ export function convertPhoneNumber(phoneNumber) {
 
 // Message pools for variety
 const messageTemplates = {
-  waiting: [
+  'waiting': [
     `Hey! Your vehicle {plateNumber} is {queueNumber} in the queue. Appreciate your patience for waiting.`,
     `Hi there! Your car {plateNumber} is currently {queueNumber} in line. Thanks for your patience!`,
     `Hello! Vehicle {plateNumber} is {queueNumber} in our service queue. We'll get to you soon!`,
@@ -64,7 +64,7 @@ const messageTemplates = {
     `Excellent! Your vehicle has been thoroughly checked and is ready. Kindly visit our admin for payment processing.`,
     `Your vehicle service is complete! Final inspection done. Please head to our admin area for payment and pickup.`
   ],
-  completed: [
+  'completed': [
     `Thank you for visiting Hakum Auto Care, wish you liked our service! Take care driving!`,
     `Thank you for choosing Hakum Auto Care! We hope you're satisfied with our service. Drive safely!`,
     `It was a pleasure serving you at Hakum Auto Care! Hope you enjoyed our service. Safe travels!`,
