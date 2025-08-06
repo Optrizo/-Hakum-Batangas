@@ -130,6 +130,8 @@ export async function sendSMS(status, plateNumber, serviceType, phoneNumber, que
 
   const convertedPhoneNumber = convertPhoneNumber(phoneNumber);
 
+  // Generate the message using the random message template
+  const message = getRandomMessage(status, plateNumber, serviceType, queueNumber);
 
   const payload = {
     SenderId: senderId,
