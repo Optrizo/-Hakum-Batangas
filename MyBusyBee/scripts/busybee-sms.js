@@ -92,7 +92,6 @@ function getRandomMessage(status, plateNumber, serviceType, queueNumber) {
   const randomIndex = Math.floor(Math.random() * templates.length);
   let selectedTemplate = templates[randomIndex];
   
-  // Replace placeholders
   selectedTemplate = selectedTemplate.replace(/\{plateNumber\}/g, plateNumber);
   selectedTemplate = selectedTemplate.replace(/\{serviceType\}/g, serviceType || '');
   selectedTemplate = selectedTemplate.replace(/\{queueNumber\}/g, queueNumber || '?');
