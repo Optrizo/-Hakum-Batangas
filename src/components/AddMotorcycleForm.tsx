@@ -143,36 +143,12 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    let formattedValue: string | number = value;
 
-    if (name === 'plate') {
-      const cleanValue = value.replace(/[-\s]/g, '').toUpperCase();
-      const numbers = cleanValue.slice(0, 3).replace(/[^0-9]/g, '');
-      const letters = cleanValue.slice(3, 6).replace(/[^A-Z]/g, '');
-      
-      if (cleanValue.length > 3) {
-        formattedValue = `${numbers}-${letters}`;
-      } else {
-        formattedValue = numbers;
-      }
-    } else if (name === 'total_cost') {
-      const costValue = value.trim() === '' ? '' : value;
-      setManualTotalCost(costValue as number);
-      setIsCostOverridden(value.trim() !== '');
-      return;
-    } else if (name === 'phone') {
-      formattedValue = value.replace(/[^\d+]/g, '');
-      if (formattedValue.startsWith('+63') && formattedValue.length > 3) {
-        formattedValue = `+63 ${formattedValue.slice(3).match(/.{1,3}/g)?.join(' ')}`;
-      } else if (formattedValue.startsWith('0') && formattedValue.length > 1) {
-        formattedValue = `${formattedValue.slice(0, 4)} ${formattedValue.slice(4, 7)} ${formattedValue.slice(7, 11)}`;
-      }
-    }
-
-    setFormData(prev => ({ ...prev, [name]: formattedValue }));
+    // Remove plate formatting logic
+    setFormData(prev => ({ ...prev, [name]: value }));
 
     if (errors[name]) {
-      validateField(name, formattedValue);
+      validateField(name, value);
     }
   };
 
@@ -182,11 +158,9 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   };
 
   const validateField = (name: string, value: any) => {
+    // Remove plate validation logic
     let result;
     switch (name) {
-      case 'plate':
-        result = validateMotorcyclePlate(value);
-        break;
       case 'model':
         result = validateMotorcycleModel(value);
         break;
@@ -266,9 +240,6 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
     const newErrors: Record<string, string> = {};
 
     // Validate required fields
-    const plateResult = validateMotorcyclePlate(formData.plate);
-    if (!plateResult.isValid) newErrors.plate = plateResult.error!;
-
     const modelResult = validateMotorcycleModel(formData.model);
     if (!modelResult.isValid) newErrors.model = modelResult.error!;
 
@@ -295,13 +266,6 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
     // Validate crew if status is 'in-progress'
     if (formData.status === 'in-progress' && formData.crew.length === 0 && !hasPackageSelected) {
       newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
-    }
-
-    // Duplicate check for in-progress, waiting, or payment-pending
-    const trimmedPlate = formData.plate.trim().toUpperCase();
-    const duplicate = false; // TODO: Implement proper duplicate check for motorcycles
-    if (duplicate) {
-      newErrors.plate = 'A motorcycle with this license plate is already in the active queue (waiting, in-progress, or payment).';
     }
 
     // Total cost must be >= 1
@@ -777,4 +741,4 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   );
 };
 
-export default AddMotorcycleForm; 
+export default AddMotorcycleForm;

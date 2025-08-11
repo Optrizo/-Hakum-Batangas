@@ -162,16 +162,6 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     
-    // License plate validation
-    const plateRegex = /^[A-Z]{3}-?\d{3,4}$/;
-    if (!formData.plate.trim()) {
-      newErrors.plate = 'License plate is required to identify the vehicle';
-    } else if (!plateRegex.test(formData.plate.toUpperCase())) {
-      newErrors.plate = 'Please enter a valid Philippine license plate format (e.g., ABC-1234 or ABC1234)';
-    } else if (formData.plate.length > 8) {
-      newErrors.plate = 'License plate is too long';
-    }
-    
     // Car model validation
     if (!formData.model.trim()) {
       newErrors.model = 'Car model is required to identify the vehicle type';
@@ -235,28 +225,9 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    let formattedValue = value;
 
-    if (name === 'plate') {
-      const cleanValue = value.replace(/[-\s]/g, '').toUpperCase();
-      const letters = cleanValue.slice(0, 3).replace(/[^A-Z]/g, '');
-      const numbers = cleanValue.slice(3, 7).replace(/[^0-9]/g, '');
-      
-      if (cleanValue.length > 3) {
-        formattedValue = `${letters}-${numbers}`;
-      } else {
-        formattedValue = letters;
-      }
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
 
-    setFormData(prev => ({ ...prev, [name]: formattedValue }));
-
-    if (name === 'total_cost') {
-        const costValue = value.trim() === '' ? '' : parseFloat(value);
-        setManualTotalCost(costValue);
-        setIsCostOverridden(value.trim() !== '');
-    }
-    
     if (errors[name]) {
       setErrors(prev => {
         const newErrors = { ...prev };
