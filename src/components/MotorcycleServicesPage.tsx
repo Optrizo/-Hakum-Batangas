@@ -126,10 +126,6 @@ const MotorcycleServicesPage: React.FC = () => {
       setFormError('Service name is required.');
       return;
     }
-    if (serviceFormData.pricing.small <= 0 && serviceFormData.pricing.large <= 0) {
-      setFormError('At least one price (Small or Large) must be greater than zero.');
-      return;
-    }
 
     try {
       const serviceData = {
@@ -157,10 +153,6 @@ const MotorcycleServicesPage: React.FC = () => {
 
     if (!packageFormData.name.trim()) {
       setFormError('Package name is required.');
-      return;
-    }
-    if ((packageFormData.pricing?.small || 0) <= 0 && (packageFormData.pricing?.large || 0) <= 0) {
-      setFormError('At least one price (Small or Large) must be greater than zero.');
       return;
     }
 
@@ -302,14 +294,14 @@ const MotorcycleServicesPage: React.FC = () => {
                     id="price-small"
                     value={serviceFormData.pricing.small === 0 ? '' : serviceFormData.pricing.small}
                     onChange={e => {
-                      const value = e.target.value.replace(/^0+(?!$)/, '');
+                      const value = e.target.value;
                       setServiceFormData(prev => ({
                         ...prev,
-                        pricing: { ...prev.pricing, small: Number(value) || 0 }
+                        pricing: { ...prev.pricing, small: value === '' ? 0 : Number(value) }
                       }));
                     }}
                     className="block w-full rounded-lg bg-background-light dark:bg-background-dark border shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2.5 pl-7"
-                    min="0"
+                    step="any"
                     placeholder="0.00"
                   />
                 </div>
@@ -328,14 +320,14 @@ const MotorcycleServicesPage: React.FC = () => {
                     id="price-large"
                     value={serviceFormData.pricing.large === 0 ? '' : serviceFormData.pricing.large}
                     onChange={e => {
-                      const value = e.target.value.replace(/^0+(?!$)/, '');
+                      const value = e.target.value;
                       setServiceFormData(prev => ({
                         ...prev,
-                        pricing: { ...prev.pricing, large: Number(value) || 0 }
+                        pricing: { ...prev.pricing, large: value === '' ? 0 : Number(value) }
                       }));
                     }}
                     className="block w-full rounded-lg bg-background-light dark:bg-background-dark border shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2.5 pl-7"
-                    min="0"
+                    step="any"
                     placeholder="0.00"
                   />
                 </div>
@@ -477,4 +469,4 @@ const MotorcycleServicesPage: React.FC = () => {
   );
 };
 
-export default MotorcycleServicesPage; 
+export default MotorcycleServicesPage;

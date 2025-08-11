@@ -63,10 +63,7 @@ const ServicesPage: React.FC = () => {
     if (!serviceFormData.name.trim()) {
       newErrors.name = 'Service name is required.';
     }
-    const hasAtLeastOnePrice = Object.values(serviceFormData.pricing).some(price => price > 0);
-    if (!hasAtLeastOnePrice) {
-      newErrors.pricing = 'At least one price for a car size must be set.';
-    }
+    // Remove price validation
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -79,10 +76,7 @@ const ServicesPage: React.FC = () => {
     if (packageFormData.service_ids.length === 0) {
       newErrors.services = 'At least one service must be included in a package.';
     }
-    const hasAtLeastOnePrice = Object.values(packageFormData.pricing).some(price => price > 0);
-    if (!hasAtLeastOnePrice) {
-      newErrors.pricing = 'At least one price for a car size must be set.';
-    }
+    // Remove price validation
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -282,7 +276,7 @@ const ServicesPage: React.FC = () => {
                     onChange={(e) => handleServicePricingChange(size.value, e)}
                     className="block w-full rounded-md bg-background-light dark:bg-background-dark border-border-light dark:border-border-dark shadow-sm focus:border-brand-blue focus:ring-brand-blue sm:text-sm p-3 pl-8 text-right"
                     placeholder="0"
-                    min="0"
+                    step="any"
                   />
                 </div>
               </div>
@@ -386,7 +380,7 @@ const ServicesPage: React.FC = () => {
                     onChange={(e) => handlePackagePricingChange(size.value, e)}
                     className="block w-full rounded-md bg-background-light dark:bg-background-dark border-border-light dark:border-border-dark shadow-sm focus:border-brand-blue focus:ring-brand-blue sm:text-sm p-3 pl-8 text-right"
                     placeholder="0"
-                    min="0"
+                    step="any"
                   />
                 </div>
               </div>
