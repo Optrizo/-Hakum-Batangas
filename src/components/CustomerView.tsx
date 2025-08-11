@@ -5,6 +5,8 @@ import { Car as CarIcon, Bike as BikeIcon } from 'lucide-react';
 import HakumLogoBlue from '/Hakum V2 (Blue).png';
 import { useLocation, Navigate } from 'react-router-dom';
 
+// Rebuilt based on user feedback to be non-scrollable and to correctly display service names.
+
 const CustomerView: React.FC = () => {
   const location = useLocation();
   // Kiosk mode: if not on /customer, redirect to /customer
@@ -17,13 +19,22 @@ const CustomerView: React.FC = () => {
   console.log('CustomerView debug:', { loading, cars, motorcycles });
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    // Update every second
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
     document.body.style.backgroundColor = '#111113';
+
     return () => {
       clearInterval(timer);
       document.body.style.backgroundColor = '';
     };
   }, []);
+
+  const bgMain = 'bg-[#111113]';
+  const textSecondary = 'text-gray-300';
+  const textHeader = 'text-blue-400';
 
   const cardTextColor = '#fff';
   const overlayOpacity = 0.5;
@@ -39,9 +50,12 @@ const CustomerView: React.FC = () => {
     return combined
       .filter(v => {
         const isMotorcycle = 'vehicle_type' in v && v.vehicle_type === 'motorcycle';
+        const hasPackage = isMotorcycle
+          ? !!v.package
+          : packages.some(p => p.name === (v as Car).service);
         const isActiveStatus = ['waiting', 'in-progress', 'payment-pending'].includes(v.status);
         if (!isActiveStatus) return false;
-        if (isMotorcycle) {
+        if (hasPackage) {
           // Show package vehicles until completed/cancelled
           return v.status !== 'completed' && v.status !== 'cancelled';
         } else {
@@ -91,6 +105,14 @@ const CustomerView: React.FC = () => {
     const isMotorcycle = 'vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle';
     const crewMembers = vehicle.crew?.map(id => crews.find(c => c.id === id)?.name).filter(Boolean) || [];
 
+    const hasPackage = (() => {
+      if (isMotorcycle) {
+        return !!(vehicle as Motor).package;
+      }
+      const carService = (vehicle as Car).service;
+      return packages.some(p => p.name === carService);
+    })();
+
     // Refactored to return an array of badge elements for both cars and motorcycles
     const getServiceDisplay = () => {
       let badgeNames: string[] = [];
@@ -111,7 +133,7 @@ const CustomerView: React.FC = () => {
           // Split by comma for multiple services
           const services = car.service.split(',').map(s => s.trim()).filter(Boolean);
           badgeNames.push(...services);
-      }
+        }
       }
 
       if (badgeNames.length === 0) return null;
@@ -122,13 +144,13 @@ const CustomerView: React.FC = () => {
           key={`${name}-${idx}`} 
           className={`
             inline-flex items-center
-            text-emerald-300
+            ${textSecondary}
             font-bold tracking-wider
             ${sizes.service}
             transition-all duration-200
           `}
           style={{
-            textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+            textShadow: '0 1px 2px rgba(0,0,0,0.1)'
           }}
         >
           {name}
@@ -140,9 +162,7 @@ const CustomerView: React.FC = () => {
     
     return (
       <div className={`${sizes.spacing} transition-all duration-300`}>
-        {/* Vehicle Info Section */}
         <div className="flex items-center justify-between">
-          {/* Left: Icon and Plate */}
           <div className="flex items-center space-x-3">
             <div className="flex-shrink-0 text-blue-400">
               {isMotorcycle ? <BikeIcon className="h-6 w-6" /> : <CarIcon className="h-6 w-6" />}
@@ -151,12 +171,12 @@ const CustomerView: React.FC = () => {
               <p className={`${sizes.plate} font-black tracking-wider leading-none mb-1`}
                 style={{ 
                   color: plateColor,
-                  textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                  textShadow: '0 1px 2px rgba(0,0,0,0.1)'
                 }}
               >
                 {vehicle.plate}
               </p>
-              <p className="text-[0.9em] text-gray-300 font-bold tracking-wide">
+              <p className={`${sizes.model} ${textSecondary} font-bold tracking-wide`}>
                 {vehicle.model} • {vehicle.size}
               </p>
             </div>
@@ -167,7 +187,10 @@ const CustomerView: React.FC = () => {
             <div className="flex items-center gap-2">
               {crewMembers.map(name => (
                 <span key={name} 
-                  className="text-[0.9em] font-bold tracking-wider text-blue-300"
+                  className={`
+                    ${sizes.model} font-bold tracking-wider
+                    ${textHeader}
+                  `}
                   style={{
                     textShadow: '0 1px 2px rgba(0,0,0,0.2)'
                   }}
@@ -180,7 +203,7 @@ const CustomerView: React.FC = () => {
         </div>
 
         {/* Services/Packages */}
-        <div className="flex flex-wrap pl-9 ${sizes.spacing}">
+        <div className={`flex flex-wrap pl-9 ${sizes.spacing}`}>
           {getServiceDisplay()}
         </div>
       </div>
@@ -191,14 +214,14 @@ const CustomerView: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="bg-[#111113] h-screen w-screen flex items-center justify-center">
+      <div className={`${bgMain} h-screen w-screen flex items-center justify-center`}>
         <h1 className="text-4xl text-blue-400 font-bold">Loading Queue...</h1>
         <div style={{color: 'red'}}>DEBUG: Loading...</div>
       </div>
     );
   }
 
-  const plateColor = '#fff';
+  const plateColor = '#fff';  // Always use white for plate color in dark mode
 
   return (
     <div
@@ -208,27 +231,36 @@ const CustomerView: React.FC = () => {
         overflow: 'hidden',
         background: `linear-gradient(rgba(24,26,32,${overlayOpacity}), rgba(24,26,32,${overlayOpacity})), url('${bannerUrl}') center center / cover no-repeat`,
         color: cardTextColor,
-        transition: 'background 0.3s',
       }}
-      className="bg-[#111113] flex flex-col min-h-screen"
+      className={`${bgMain} flex flex-col min-h-screen`}
     >
       {/* HEADER */}
       <header className="flex justify-between items-center mb-2 flex-shrink-0">
-        <div className="flex items-center gap-3 cursor-pointer group" title="Hakum Auto Care">
-          <img src={HakumLogoBlue} alt="Hakum Logo" className="h-8 transition-all duration-300 group-active:scale-95" />
+        <div className="flex items-center gap-3">
+          <img src={HakumLogoBlue} alt="Hakum Logo" className="h-8" />
           <h1
             className="text-lg font-bold tracking-wider"
             style={{ color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.25)' }}
           >
-            HAKUM AUTO CARE BATANGAS
+            HAKUM AUTO CARE BACOOR
           </h1>
         </div>
         <div className="text-right">
-          <p className="text-xl font-bold text-blue-400">LIVE QUEUE</p>
-          <p className="text-gray-300 text-xs">
-            {currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          <p className={`text-xl font-bold ${textHeader}`}>LIVE QUEUE</p>
+          <p className={`${textSecondary} text-xs`}>
+            {currentTime.toLocaleDateString('en-US', { 
+              weekday: 'long', 
+              month: 'long', 
+              day: 'numeric', 
+              year: 'numeric' 
+            })}
             {' | '}
-            {currentTime.toLocaleTimeString()}
+            {currentTime.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true
+            })}
           </p>
         </div>
       </header>
