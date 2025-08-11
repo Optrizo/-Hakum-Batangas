@@ -144,7 +144,12 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
 
-    // Remove plate formatting logic
+    if (name === 'total_cost') {
+      setManualTotalCost(value === '' ? '' : Number(value));
+      setIsCostOverridden(true);
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
 
     if (errors[name]) {
@@ -158,7 +163,6 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   };
 
   const validateField = (name: string, value: any) => {
-    // Remove plate validation logic
     let result;
     switch (name) {
       case 'model':
@@ -172,9 +176,6 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
         break;
       case 'status':
         result = validateServiceStatus(value);
-        break;
-      case 'total_cost':
-        result = validateCost(formData.total_cost);
         break;
       default:
         return;
@@ -236,8 +237,10 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
     }
   };
 
-  const validate = (): boolean => {
+  const validate = () => {
     const newErrors: Record<string, string> = {};
+    
+    // Remove total cost validation
 
     // Validate required fields
     const modelResult = validateMotorcycleModel(formData.model);
@@ -268,11 +271,6 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
     }
 
-    // Total cost must be >= 1
-    if (typeof formData.total_cost !== 'number' || isNaN(formData.total_cost) || formData.total_cost < 1) {
-      newErrors.total_cost = 'Total cost must be at least 1.';
-    }
-
     setErrors(newErrors);
     setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the following errors:' : null);
     return Object.keys(newErrors).length === 0;
@@ -281,22 +279,20 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-
+    
+    if (isSubmitting) return;
+    
     if (!validate()) {
-      formTopRef.current?.scrollIntoView({ behavior: 'smooth' });
+      if (formTopRef.current) {
+        formTopRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
       return;
     }
-
-    // Prevent submission if total_cost < 1
-    const finalCost = isCostOverridden && manualTotalCost !== '' ? Number(manualTotalCost) : calculatedCost;
-    if (isNaN(finalCost) || finalCost < 1) {
-      setFormError('Total cost must be at least 1.');
-      setIsSubmitting(false);
-      return;
-    }
-
+    
     setIsSubmitting(true);
     try {
+      const finalCost = isCostOverridden && manualTotalCost !== '' ? Number(manualTotalCost) : calculatedCost;
+      
       const motorcycleData = {
         plate: sanitizeInput(formData.plate).toUpperCase(),
         model: sanitizeInput(formData.model),
@@ -693,9 +689,8 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
                   value={isCostOverridden ? manualTotalCost : calculatedCost}
                   onChange={handleChange}
                   className="block w-full rounded-md bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm p-2 pl-8"
-                  placeholder="0.00"
-                  min="0"
-                  step="0.01"
+                  placeholder="Enter amount"
+                  step="any"
                 />
               </div>
               {errors.total_cost && (

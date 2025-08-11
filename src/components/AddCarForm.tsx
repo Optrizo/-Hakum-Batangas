@@ -209,12 +209,6 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       newErrors.plate = 'A car with this license plate is already in the active queue (waiting, in-progress, or payment).';
     }
 
-    // Total cost must be >= 1
-    const finalCost = manualTotalCost !== '' ? Number(manualTotalCost) : totalCost;
-    if (isNaN(finalCost) || finalCost < 1) {
-      newErrors.total_cost = 'Total cost must be at least 1.';
-    }
-
     setErrors(newErrors);
     setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the following errors:' : null);
     if (newErrors.crew) {
@@ -225,6 +219,12 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+
+    if (name === 'total_cost') {
+      setManualTotalCost(value === '' ? '' : Number(value));
+      setIsCostOverridden(true);
+      return;
+    }
 
     setFormData(prev => ({ ...prev, [name]: value }));
 
@@ -304,11 +304,8 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
         throw new Error('Please select at least one valid service or package.');
       }
       
-      // Calculate final cost with validation
+      // Remove cost validation check
       const finalCost = manualTotalCost !== '' ? Number(manualTotalCost) : totalCost;
-      if (isNaN(finalCost) || finalCost < 1) {
-        throw new Error('Total cost must be at least 1.');
-      }
         
       // --- CREW BUSY LOGIC ---
       let statusToUse = formData.status;
@@ -325,7 +322,7 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
         crew: formData.crew,
         service: allServiceNames.join(', '),
         services: [...formData.selectedServices, ...formData.selectedPackages],
-        total_cost: finalCost,
+        total_cost: finalCost, // Allow any value
       });
 
       // Calculate queue number if status is waiting
@@ -743,16 +740,11 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
               <input
                 type="number"
                 name="total_cost"
-                value={manualTotalCost}
+                value={isCostOverridden ? manualTotalCost : totalCost}
                 onChange={handleChange}
-                className={`block w-full rounded-md bg-background-light dark:bg-background-dark border shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-lg p-2 text-right font-bold ${
-                  errors.total_cost 
-                    ? 'border-red-300 dark:border-red-600 focus:border-red-500 focus:ring-red-500' 
-                    : 'border-border-light dark:border-border-dark'
-                }`}
-                placeholder="Calculated automatically"
-                min="0"
-                step="0.01"
+                className="block w-full rounded-md bg-background-light dark:bg-background-dark border shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-lg p-2 text-right font-bold border-border-light dark:border-border-dark"
+                placeholder="Enter amount"
+                step="any"
               />
               {errors.total_cost && (
                 <p className="mt-1 text-xs text-red-500 text-right flex items-center justify-end">
