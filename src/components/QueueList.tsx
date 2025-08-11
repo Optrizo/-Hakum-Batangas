@@ -39,18 +39,17 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
   }, [showCalendar]);
 
   const filteredVehicles = useMemo(() => {
-    return vehicles
-      .filter(vehicle => {
-        const matchesSearch = 
-          vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) || 
-          vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          ('service' in vehicle ? vehicle.service.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
-          vehicle.phone?.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        const matchesStatus = statusFilter === 'all' || vehicle.status === statusFilter;
+    return vehicles.filter(vehicle => {
+      const matchesSearch = 
+        vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ('service' in vehicle ? vehicle.service.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+        vehicle.phone?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || vehicle.status === statusFilter;
 
-        const vehicleDate = new Date(vehicle.created_at);
-        const today = new Date();
+      const vehicleDate = new Date(vehicle.created_at);
+      const today = new Date();
       
       let matchesDate = false;
       if (dateFilter === 'today') {
@@ -63,8 +62,13 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
       }
       
       return matchesSearch && matchesStatus && matchesDate;
-    })
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    }).sort((a, b) => {
+      // Sort waiting vehicles by creation time (oldest first)
+      if (a.status === 'waiting' && b.status === 'waiting') {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      return 0;
+    });
   }, [vehicles, searchTerm, statusFilter, dateFilter, selectedDate]);
 
   // Get vehicles filtered by date only (for statistics)
@@ -409,7 +413,13 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
       ) : (
         <div className="space-y-4">
           {filteredVehicles.length > 0 ? (
-            filteredVehicles.map(vehicle => <QueueItem key={vehicle.id} vehicle={vehicle} />)
+            filteredVehicles.map(vehicle => (
+              <QueueItem 
+                key={vehicle.id} 
+                vehicle={vehicle} 
+                countCrewAsBusy={vehicle.status !== 'payment-pending'} // Add this prop
+              />
+            ))
       ) : (
             <div className="text-center p-8 bg-surface-light dark:bg-surface-dark rounded-lg">
               <p className="font-medium">No {vehicleType === 'car' ? 'cars' : 'motorcycles'} match the current filters.</p>

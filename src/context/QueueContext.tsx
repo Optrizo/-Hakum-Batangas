@@ -973,6 +973,19 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const calculateBusyCrews = () => {
+    const busyCrewIds = new Set<string>();
+    
+    // Only count crew as busy if vehicle is in-progress
+    vehicles.forEach(vehicle => {
+      if (vehicle.status === 'in-progress' && vehicle.crew) {
+        vehicle.crew.forEach(crewId => busyCrewIds.add(crewId));
+      }
+    });
+    
+    return busyCrewIds;
+  };
+
   return (
     <QueueContext.Provider value={{ 
       cars, 

@@ -10,9 +10,10 @@ import { sendSMS } from '../../MyBusyBee/scripts/busybee-sms.js';
 
 interface QueueItemProps {
   vehicle: Car | Motor;
+  countCrewAsBusy?: boolean; // Add this prop
 }
 
-const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
+const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true }) => {
   const { updateCar, updateMotorcycle, removeCar, removeMotorcycle, crews, cars, motorcycles, packages, services } = useQueue();
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -423,7 +424,7 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle }) => {
             <div className="mb-3 sm:mb-4">
               <h4 className="text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider mb-1">Crew</h4>
           {vehicle.crew && vehicle.crew.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
+                <div className={`flex flex-wrap gap-1.5 ${!countCrewAsBusy ? 'opacity-50' : ''}`}>
                   {vehicle.crew.map((crewId) => {
                 const crewMember = crews.find(c => c.id === crewId);
                 return crewMember ? (
