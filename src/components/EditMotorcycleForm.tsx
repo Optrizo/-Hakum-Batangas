@@ -127,11 +127,73 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
     validateField(name, value);
   };
   
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // Basic plate validation - just check for dash
+    if (!formData.plate.includes('-')) {
+      newErrors.plate = 'License plate must include a dash (-)';
+    } else {
+      // Check for duplicate plate in active queue
+      const trimmedPlate = formData.plate.trim().toUpperCase();
+      const isDuplicate = motorcycles.some(
+        m => m.id !== motorcycle.id &&
+             m.plate.trim().toUpperCase() === trimmedPlate &&
+             (m.status === 'waiting' || m.status === 'in-progress')
+      );
+      if (isDuplicate) {
+        newErrors.plate = 'This license plate is already in the active queue for another motorcycle.';
+      }
+    }
+
+    const modelResult = validateMotorcycleModel(formData.model);
+    if (!modelResult.isValid) newErrors.model = modelResult.error!;
+
+    const sizeResult = validateMotorcycleSize(formData.size);
+    if (!sizeResult.isValid) newErrors.size = sizeResult.error!;
+
+    const statusResult = validateServiceStatus(formData.status);
+    if (!statusResult.isValid) newErrors.status = statusResult.error!;
+
+    // Validate phone if provided
+    if (formData.phone.trim()) {
+      const phoneResult = validatePhoneNumber(formData.phone);
+      if (!phoneResult.isValid) newErrors.phone = phoneResult.error!;
+    }
+
+    // Validate crew if status is 'in-progress' and no crew selected
+    if (formData.status === 'in-progress' && formData.crew.length === 0) {
+      newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
+    }
+
+    // Always require at least one service or package
+    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
+      newErrors.services = 'Please select at least one service or package.';
+    }
+
+    // Total cost must be >= 1
+    if (typeof formData.total_cost !== 'number' || isNaN(formData.total_cost) || formData.total_cost < 1) {
+      newErrors.total_cost = 'Total cost must be at least 1.';
+    }
+
+    setErrors(newErrors);
+    setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the errors below.' : null);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const validateField = (name: string, value: any) => {
     let result;
     switch (name) {
       case 'plate':
-        result = validateMotorcyclePlate(value);
+        // Only check for dash presence
+        if (!value.includes('-')) {
+          setErrors(prev => ({ ...prev, plate: 'License plate must include a dash (-)' }));
+        } else {
+          setErrors(prev => {
+            const { plate, ...rest } = prev;
+            return rest;
+          });
+        }
         break;
       case 'model':
         result = validateMotorcycleModel(value);
@@ -152,7 +214,7 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
         return;
     }
 
-    if (!result.isValid) {
+    if (!result?.isValid) {
       setErrors(prev => ({ ...prev, [name]: result.error! }));
     } else {
       setErrors(prev => {
@@ -264,60 +326,6 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    // Validate required fields
-    const plateResult = validateMotorcyclePlate(formData.plate);
-    if (!plateResult.isValid) newErrors.plate = plateResult.error!;
-    else {
-      // Check for duplicate plate in active queue, excluding the current motorcycle
-      const trimmedPlate = formData.plate.trim().toUpperCase();
-      const isDuplicate = motorcycles.some(
-        m => m.id !== motorcycle.id &&
-             m.plate.trim().toUpperCase() === trimmedPlate &&
-             (m.status === 'waiting' || m.status === 'in-progress')
-      );
-      if (isDuplicate) {
-        newErrors.plate = 'This license plate is already in the active queue for another motorcycle.';
-      }
-    }
-
-    const modelResult = validateMotorcycleModel(formData.model);
-    if (!modelResult.isValid) newErrors.model = modelResult.error!;
-
-    const sizeResult = validateMotorcycleSize(formData.size);
-    if (!sizeResult.isValid) newErrors.size = sizeResult.error!;
-
-    const statusResult = validateServiceStatus(formData.status);
-    if (!statusResult.isValid) newErrors.status = statusResult.error!;
-
-    // Validate phone if provided
-    if (formData.phone.trim()) {
-      const phoneResult = validatePhoneNumber(formData.phone);
-      if (!phoneResult.isValid) newErrors.phone = phoneResult.error!;
-    }
-
-    // Validate crew if status is 'in-progress' and no crew selected
-    if (formData.status === 'in-progress' && formData.crew.length === 0) {
-      newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
-    }
-
-    // Always require at least one service or package
-    if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
-      newErrors.services = 'Please select at least one service or package.';
-    }
-
-    // Total cost must be >= 1
-    if (typeof formData.total_cost !== 'number' || isNaN(formData.total_cost) || formData.total_cost < 1) {
-      newErrors.total_cost = 'Total cost must be at least 1.';
-    }
-
-    setErrors(newErrors);
-    setFormError(Object.keys(newErrors).length > 0 ? 'Please fix the errors below.' : null);
-    return Object.keys(newErrors).length === 0;
   };
 
   return (
@@ -669,4 +677,4 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
   );
 };
 
-export default EditMotorcycleForm; 
+export default EditMotorcycleForm;

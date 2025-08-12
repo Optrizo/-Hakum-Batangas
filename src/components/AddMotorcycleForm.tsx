@@ -91,43 +91,38 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   // Search motorcycle history when plate changes
   useEffect(() => {
     const searchHistory = async () => {
-      const platePattern = /^[0-9]{3}-[A-Z]{3}$/;
+      // Only search when plate has a dash and is complete
       const plateInput = formData.plate.toUpperCase();
-      if (platePattern.test(plateInput)) {
-        // Check for a complete match in the motorcycles list
-        const match = motorcycles.find(m => m.plate.trim().toUpperCase() === plateInput);
-        if (match) {
-          setIsSearchingHistory(true);
-          setAutoFilledFromHistory(false);
-          try {
-            const history = await searchMotorcycleHistory(formData.plate);
-            if (history) {
-              setFormData(prev => ({
-                ...prev,
-                model: history.model,
-                phone: history.phone || '',
-                size: history.size
-              }));
-              setAutoFilledFromHistory(true);
+      if (plateInput.includes('-')) {
+        const [prefix, number] = plateInput.split('-');
+        // Only search if we have both parts
+        if (prefix && number) {
+          // Check for a complete match in the motorcycles list
+          const match = motorcycles.find(m => m.plate.trim().toUpperCase() === plateInput);
+          if (match) {
+            setIsSearchingHistory(true);
+            setAutoFilledFromHistory(false);
+            try {
+              const history = await searchMotorcycleHistory(formData.plate);
+              if (history) {
+                setFormData(prev => ({
+                  ...prev,
+                  model: history.model,
+                  phone: history.phone || '',
+                  size: history.size
+                }));
+                setAutoFilledFromHistory(true);
+              }
+            } catch (error) {
+              console.error('Error searching motorcycle history:', error);
+            } finally {
+              setIsSearchingHistory(false);
             }
-          } catch (error) {
-            console.error('Error searching motorcycle history:', error);
-          } finally {
-            setIsSearchingHistory(false);
           }
-        } else {
-          setAutoFilledFromHistory(false);
-          // If plate is not a complete match, clear autofilled fields
-          setFormData(prev => ({
-            ...prev,
-            model: '',
-            phone: '',
-            size: 'small',
-          }));
         }
       } else {
         setAutoFilledFromHistory(false);
-        // If plate is not valid, also clear autofilled fields
+        // If plate has no dash, clear autofilled fields
         setFormData(prev => ({
           ...prev,
           model: '',
@@ -239,7 +234,12 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    
+
+    // Basic plate validation - just check for dash
+    if (!formData.plate.includes('-')) {
+      newErrors.plate = 'License plate must include a dash (-)';
+    }
+
     // Remove total cost validation
 
     // Validate required fields

@@ -121,9 +121,10 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     
-    const plateResult = validateLicensePlate(formData.plate);
-    if (!plateResult.isValid) newErrors.plate = plateResult.error!;
-    else {
+    // Simple plate validation - just check for dash
+    if (!formData.plate.includes('-')) {
+      newErrors.plate = 'License plate must include a dash (-)';
+    } else {
       const trimmedPlate = formData.plate.trim().toUpperCase();
       const isDuplicate = cars.some(
         c => c.id !== car.id &&

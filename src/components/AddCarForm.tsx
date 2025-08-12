@@ -107,44 +107,38 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
   // Auto-complete car details from history when plate is entered
   useEffect(() => {
     const searchHistory = async () => {
-      // Only trigger if plate is a valid, complete Philippine car plate
-      const platePattern = /^[A-Z]{3}-?\d{3,4}$/;
+      // Only search when plate has a dash and is complete
       const plateInput = formData.plate.toUpperCase();
-      if (platePattern.test(plateInput)) {
-        // Check for a complete match in the cars list
-        const match = cars.find(c => c.plate.trim().toUpperCase() === plateInput);
-        if (match) {
-          setIsSearchingHistory(true);
-          setAutoFilledFromHistory(false);
-          try {
-            const historyCar = await searchCarHistory(formData.plate);
-            if (historyCar) {
-              setFormData(prev => ({
-                ...prev,
-                model: historyCar.model,
-                phone: historyCar.phone || '',
-                size: historyCar.size
-              }));
-              setAutoFilledFromHistory(true);
+      if (plateInput.includes('-')) {
+        const [prefix, number] = plateInput.split('-');
+        // Only search if we have both parts
+        if (prefix && number) {
+          // Check for a complete match in the cars list
+          const match = cars.find(c => c.plate.trim().toUpperCase() === plateInput);
+          if (match) {
+            setIsSearchingHistory(true);
+            setAutoFilledFromHistory(false);
+            try {
+              const historyCar = await searchCarHistory(formData.plate);
+              if (historyCar) {
+                setFormData(prev => ({
+                  ...prev,
+                  model: historyCar.model,
+                  phone: historyCar.phone || '',
+                  size: historyCar.size
+                }));
+                setAutoFilledFromHistory(true);
+              }
+            } catch (error) {
+              console.error('❌ Error during auto-completion:', error);
+            } finally {
+              setIsSearchingHistory(false);
             }
-          } catch (error) {
-            console.error('❌ Error during auto-completion:', error);
-          } finally {
-            setIsSearchingHistory(false);
           }
-        } else {
-          setAutoFilledFromHistory(false);
-          // If plate is not a complete match, clear autofilled fields
-          setFormData(prev => ({
-            ...prev,
-            model: '',
-            phone: '',
-            size: 'medium',
-          }));
         }
       } else {
         setAutoFilledFromHistory(false);
-        // If plate is not valid, also clear autofilled fields
+        // If plate has no dash, clear autofilled fields
         setFormData(prev => ({
           ...prev,
           model: '',
@@ -162,6 +156,11 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     
+    // Basic plate validation - just ensure it has a dash
+    if (!formData.plate.includes('-')) {
+      newErrors.plate = 'License plate must include a dash (-)';
+    }
+
     // Car model validation
     if (!formData.model.trim()) {
       newErrors.model = 'Car model is required to identify the vehicle type';

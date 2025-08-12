@@ -331,10 +331,9 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addCar = async (car: Omit<Car, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      // Validate license plate format before sending to DB
-      const plateValidation = validateLicensePlate(car.plate);
-      if (!plateValidation.isValid) {
-        throw new Error(plateValidation.error);
+      // Only check if plate includes a dash
+      if (!car.plate.includes('-')) {
+        throw new Error('License plate must include a dash (-)');
       }
       
       const { data, error } = await supabase
@@ -345,12 +344,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .select()
         .single();
 
-      if (error) {
-        if (error.code === '23505') { // Unique constraint violation
-          throw new Error(`A car with license plate "${car.plate}" might already be in the queue.`);
-        }
-        throw error;
-      }
+      if (error) throw error;
 
       if (data) {
         // Optimistic update: add the new car to the local state immediately
@@ -489,16 +483,17 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addMotorcycle = async (motorcycle: Omit<Motor, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      // Validate motorcycle plate
-      const plateValidation = validateMotorcyclePlate(motorcycle.plate);
-      if (!plateValidation.isValid) {
-        throw new Error(plateValidation.error);
+      // Only check if plate includes a dash
+      if (!motorcycle.plate.includes('-')) {
+        throw new Error('License plate must include a dash (-)');
       }
+
       // Validate model
       const modelValidation = validateMotorcycleModel(motorcycle.model);
       if (!modelValidation.isValid) {
         throw new Error(modelValidation.error);
       }
+      
       // Validate size
       const sizeValidation = validateMotorcycleSize(motorcycle.size);
       if (!sizeValidation.isValid) {
