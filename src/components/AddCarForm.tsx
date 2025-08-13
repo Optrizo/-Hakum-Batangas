@@ -107,12 +107,12 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
   // Auto-complete car details from history when plate is entered
   useEffect(() => {
     const searchHistory = async () => {
-      // Only search when plate has a dash and is complete
+      // Only search when plate has a dash and both parts are present
       const plateInput = formData.plate.toUpperCase();
       if (plateInput.includes('-')) {
-        const [prefix, number] = plateInput.split('-');
-        // Only search if we have both parts
-        if (prefix && number) {
+        const parts = plateInput.split('-');
+        // Only search if we have both parts (before and after dash)
+        if (parts[0] && parts[1]) {
           // Check for a complete match in the cars list
           const match = cars.find(c => c.plate.trim().toUpperCase() === plateInput);
           if (match) {
@@ -156,9 +156,14 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     
-    // Basic plate validation - just ensure it has a dash
+    // Plate validation - only check for dash presence
     if (!formData.plate.includes('-')) {
-      newErrors.plate = 'License plate must include a dash (-)';
+      newErrors.plate = 'Plate number must include a dash (-). Example: ABC-1234, I07-60B';
+    }
+    
+    // Don't allow empty plate
+    if (formData.plate.trim().length === 0) {
+      newErrors.plate = 'Plate number is required';
     }
 
     // Car model validation
@@ -419,8 +424,8 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
                       ? 'border-red-300 dark:border-red-600 focus:border-red-500 focus:ring-red-500' 
                       : 'border-border-light dark:border-border-dark'
                   }`}
-                  placeholder="ABC-1234"
-            maxLength={8}
+                  placeholder="ABC-1234 or I07-60B"
+            maxLength={15}
                   required
                 />
                 {isSearchingHistory && (
@@ -441,8 +446,8 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
                 </p>
               ) : (
                 <p className="mt-1 text-xs text-text-secondary-light dark:text-text-secondary-dark">
-                  Enter the vehicle's license plate number (e.g., ABC-1234)
-                  {formData.plate.length >= 3 && isSearchingHistory && (
+                  Enter any valid plate number with a dash (e.g., ABC-1234, I07-60B)
+                  {formData.plate.length >= 2 && isSearchingHistory && (
                     <span className="ml-2 text-brand-blue">Searching for previous records...</span>
                   )}
                 </p>

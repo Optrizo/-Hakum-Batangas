@@ -5,7 +5,7 @@ export interface ValidationResult {
   error?: string;
 }
 
-// License plate validation for Philippine format
+// License plate validation for Philippine format and conduction stickers
 export const validateLicensePlate = (plate: string): ValidationResult => {
   if (!plate || typeof plate !== 'string') {
     return { isValid: false, error: 'License plate is required' };
@@ -21,16 +21,21 @@ export const validateLicensePlate = (plate: string): ValidationResult => {
     return { isValid: false, error: 'License plate is too long' };
   }
 
-  // Regex for cars (LLL-DDDD or LLL-DDD) and motorcycles (LL-DDDDD or DDD-LLL)
-  const plateRegex = /^(?:[A-Z]{3}-?\d{3,4}|[A-Z]{2}-?\d{5}|\d{3}-?[A-Z]{3})$/;
-  if (!plateRegex.test(sanitizedPlate)) {
-    return { isValid: false, error: 'Please enter a valid PH car or motorcycle plate format (e.g., ABC-1234, AB12345, 123-ABC)' };
+  // Check if the plate contains a dash to maintain basic structure
+  if (!sanitizedPlate.includes('-')) {
+    return { isValid: false, error: 'Please include a dash (-) in the plate number' };
+  }
+
+  // Verify the plate has valid parts before and after the dash
+  const parts = sanitizedPlate.split('-');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    return { isValid: false, error: 'Plate number must have valid characters before and after the dash' };
   }
 
   return { isValid: true };
 };
 
-// Motorcycle license plate validation (specific format: 123-ABC)
+// Motorcycle license plate validation with flexible format
 export const validateMotorcyclePlate = (plate: string): ValidationResult => {
   if (!plate || typeof plate !== 'string') {
     return { isValid: false, error: 'Motorcycle license plate is required' };
@@ -38,10 +43,23 @@ export const validateMotorcyclePlate = (plate: string): ValidationResult => {
 
   const sanitizedPlate = plate.trim().toUpperCase();
   
-  // Specific format for motorcycles: 123-ABC
-  const motorcyclePlateRegex = /^\d{3}-[A-Z]{3}$/;
-  if (!motorcyclePlateRegex.test(sanitizedPlate)) {
-    return { isValid: false, error: 'Motorcycle plate must be in format 123-ABC' };
+  if (sanitizedPlate.length < 3) {
+    return { isValid: false, error: 'Motorcycle plate must be at least 3 characters long' };
+  }
+
+  if (sanitizedPlate.length > 8) {
+    return { isValid: false, error: 'Motorcycle plate is too long' };
+  }
+
+  // Check if the plate contains a dash to maintain basic structure
+  if (!sanitizedPlate.includes('-')) {
+    return { isValid: false, error: 'Please include a dash (-) in the plate number' };
+  }
+
+  // Verify the plate has valid parts before and after the dash
+  const parts = sanitizedPlate.split('-');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    return { isValid: false, error: 'Plate number must have valid characters before and after the dash' };
   }
 
   return { isValid: true };
