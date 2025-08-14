@@ -39,43 +39,56 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
   }, [showCalendar]);
 
   const filteredVehicles = useMemo(() => {
-    return vehicles.filter(vehicle => {
-      const matchesSearch = 
-        vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ('service' in vehicle ? vehicle.service.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
-        vehicle.phone?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = statusFilter === 'all' || vehicle.status === statusFilter;
+    return vehicles
+      .filter(vehicle => {
+        // Apply date filter
+        const vehicleDate = new Date(vehicle.status === 'completed' ? vehicle.updated_at : vehicle.created_at);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        let matchesDate = false;
+        if (dateFilter === 'today') {
+          matchesDate = vehicleDate.toDateString() === today.toDateString();
+        } else if (dateFilter === 'all') {
+          matchesDate = true;
+        } else if (dateFilter === 'custom' && selectedDate) {
+          const selectedDateObj = new Date(selectedDate);
+          matchesDate = vehicleDate.toDateString() === selectedDateObj.toDateString();
+        }
 
-      const vehicleDate = new Date(vehicle.created_at);
-      const today = new Date();
-      
-      let matchesDate = false;
-      if (dateFilter === 'today') {
-        matchesDate = vehicleDate.toDateString() === today.toDateString();
-      } else if (dateFilter === 'all') {
-        matchesDate = true;
-      } else if (dateFilter === 'custom' && selectedDate) {
-        const selectedDateObj = new Date(selectedDate);
-        matchesDate = vehicleDate.toDateString() === selectedDateObj.toDateString();
-      }
-      
-      return matchesSearch && matchesStatus && matchesDate;
-    }).sort((a, b) => {
-      // Sort waiting vehicles by creation time (oldest first)
-      if (a.status === 'waiting' && b.status === 'waiting') {
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      }
-      return 0;
-    });
+        if (!matchesDate) return false;
+
+        // Apply search filter
+        const matchesSearch = 
+          vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) || 
+          vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          ('service' in vehicle ? vehicle.service.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+          vehicle.phone?.toLowerCase().includes(searchTerm.toLowerCase());
+
+        // Apply status filter
+        const matchesStatus = statusFilter === 'all' || vehicle.status === statusFilter;
+        
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        // Sort waiting vehicles by creation time (oldest first)
+        if (a.status === 'waiting' && b.status === 'waiting') {
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        }
+        // Sort completed vehicles by completion time (newest first)
+        if (a.status === 'completed' && b.status === 'completed') {
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+        }
+        return 0;
+      });
   }, [vehicles, searchTerm, statusFilter, dateFilter, selectedDate]);
 
-  // Get vehicles filtered by date only (for statistics)
+  // Get vehicles for the selected date (for statistics)
   const dateFilteredVehicles = useMemo(() => {
     return vehicles.filter(vehicle => {
-      const vehicleDate = new Date(vehicle.created_at);
+      const vehicleDate = new Date(vehicle.status === 'completed' ? vehicle.updated_at : vehicle.created_at);
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
       
       let matchesDate = false;
       if (dateFilter === 'today') {
