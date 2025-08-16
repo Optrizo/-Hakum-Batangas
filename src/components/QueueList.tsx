@@ -44,16 +44,19 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
         // Apply date filter
         const vehicleDate = new Date(vehicle.status === 'completed' ? vehicle.updated_at : vehicle.created_at);
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        // Set time to noon for consistent comparison
+        const vehicleDateNoon = new Date(vehicleDate.getFullYear(), vehicleDate.getMonth(), vehicleDate.getDate(), 12, 0, 0, 0);
+        const todayNoon = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0, 0);
         
         let matchesDate = false;
         if (dateFilter === 'today') {
-          matchesDate = vehicleDate.toDateString() === today.toDateString();
+          matchesDate = vehicleDateNoon.toDateString() === todayNoon.toDateString();
         } else if (dateFilter === 'all') {
           matchesDate = true;
         } else if (dateFilter === 'custom' && selectedDate) {
           const selectedDateObj = new Date(selectedDate);
-          matchesDate = vehicleDate.toDateString() === selectedDateObj.toDateString();
+          const selectedNoon = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth(), selectedDateObj.getDate(), 12, 0, 0, 0);
+          matchesDate = vehicleDateNoon.toDateString() === selectedNoon.toDateString();
         }
 
         if (!matchesDate) return false;
@@ -88,16 +91,19 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
     return vehicles.filter(vehicle => {
       const vehicleDate = new Date(vehicle.status === 'completed' ? vehicle.updated_at : vehicle.created_at);
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Set time to noon for consistent comparison
+      const vehicleDateNoon = new Date(vehicleDate.getFullYear(), vehicleDate.getMonth(), vehicleDate.getDate(), 12, 0, 0, 0);
+      const todayNoon = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0, 0);
       
       let matchesDate = false;
       if (dateFilter === 'today') {
-        matchesDate = vehicleDate.toDateString() === today.toDateString();
+        matchesDate = vehicleDateNoon.toDateString() === todayNoon.toDateString();
       } else if (dateFilter === 'all') {
         matchesDate = true;
       } else if (dateFilter === 'custom' && selectedDate) {
         const selectedDateObj = new Date(selectedDate);
-        matchesDate = vehicleDate.toDateString() === selectedDateObj.toDateString();
+        const selectedNoon = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth(), selectedDateObj.getDate(), 12, 0, 0, 0);
+        matchesDate = vehicleDateNoon.toDateString() === selectedNoon.toDateString();
       }
       
       return matchesDate;
@@ -133,7 +139,8 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
   };
 
   const handleDateSelect = (day: number) => {
-    const selectedDateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    // Set the time to noon (12:00) to avoid timezone issues
+    const selectedDateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day, 12, 0, 0, 0);
     const formattedDate = formatDate(selectedDateObj);
     setSelectedDate(formattedDate);
     setDateFilter('custom');
@@ -142,17 +149,19 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
 
   const isToday = (day: number) => {
     const today = new Date();
-    return day === today.getDate() && 
-           currentMonth.getMonth() === today.getMonth() && 
-           currentMonth.getFullYear() === today.getFullYear();
+    // Create dates with same time components for comparison
+    const todayNoon = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0, 0);
+    const checkDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day, 12, 0, 0, 0);
+    return todayNoon.toDateString() === checkDate.toDateString();
   };
 
   const isSelectedDate = (day: number) => {
     if (!selectedDate) return false;
     const selectedDateObj = new Date(selectedDate);
-    return day === selectedDateObj.getDate() && 
-           currentMonth.getMonth() === selectedDateObj.getMonth() && 
-           currentMonth.getFullYear() === selectedDateObj.getFullYear();
+    // Create dates with same time components for comparison
+    const selectedNoon = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth(), selectedDateObj.getDate(), 12, 0, 0, 0);
+    const checkDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day, 12, 0, 0, 0);
+    return selectedNoon.toDateString() === checkDate.toDateString();
   };
 
   const generateCalendarDays = () => {
