@@ -14,7 +14,7 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ServiceStatus | 'all'>('waiting');
   const [dateFilter, setDateFilter] = useState('today');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState<string | { start: string; end: string }>('');
   const [showCalendar, setShowCalendar] = useState(false);
 
   // Calendar state
@@ -54,9 +54,14 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
         } else if (dateFilter === 'all') {
           matchesDate = true;
         } else if (dateFilter === 'custom' && selectedDate) {
-          const selectedDateObj = new Date(selectedDate);
-          const selectedNoon = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth(), selectedDateObj.getDate(), 12, 0, 0, 0);
-          matchesDate = vehicleDateNoon.toDateString() === selectedNoon.toDateString();
+          if (typeof selectedDate === 'object') {
+            const startDate = new Date(selectedDate.start);
+            const endDate = new Date(selectedDate.end);
+            matchesDate = vehicleDateNoon >= startDate && vehicleDateNoon <= endDate;
+          } else {
+            const selectedDateObj = new Date(selectedDate);
+            matchesDate = vehicleDateNoon.toDateString() === selectedDateObj.toDateString();
+          }
         }
 
         if (!matchesDate) return false;
@@ -101,9 +106,14 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
       } else if (dateFilter === 'all') {
         matchesDate = true;
       } else if (dateFilter === 'custom' && selectedDate) {
-        const selectedDateObj = new Date(selectedDate);
-        const selectedNoon = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth(), selectedDateObj.getDate(), 12, 0, 0, 0);
-        matchesDate = vehicleDateNoon.toDateString() === selectedNoon.toDateString();
+        if (typeof selectedDate === 'object') {
+          const startDate = new Date(selectedDate.start);
+          const endDate = new Date(selectedDate.end);
+          matchesDate = vehicleDateNoon >= startDate && vehicleDateNoon <= endDate;
+        } else {
+          const selectedDateObj = new Date(selectedDate);
+          matchesDate = vehicleDateNoon.toDateString() === selectedDateObj.toDateString();
+        }
       }
       
       return matchesDate;
@@ -129,13 +139,27 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
     return date.toISOString().split('T')[0];
   };
 
-  const formatDisplayDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
-    });
+  const formatDisplayDate = (date: string | { start: string; end: string }) => {
+    if (typeof date === 'string') {
+      const parsedDate = new Date(date);
+      return parsedDate.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    } else {
+      const start = new Date(date.start).toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+      const end = new Date(date.end).toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+      return `${start} - ${end}`;
+    }
   };
 
   const handleDateSelect = (day: number) => {
@@ -157,7 +181,7 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
 
   const isSelectedDate = (day: number) => {
     if (!selectedDate) return false;
-    const selectedDateObj = new Date(selectedDate);
+    const selectedDateObj = typeof selectedDate === 'string' ? new Date(selectedDate) : new Date(selectedDate.start);
     // Create dates with same time components for comparison
     const selectedNoon = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth(), selectedDateObj.getDate(), 12, 0, 0, 0);
     const checkDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day, 12, 0, 0, 0);
@@ -221,13 +245,22 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
       const today = new Date();
       const startOfWeek = new Date(today);
       startOfWeek.setDate(today.getDate() - today.getDay());
-      setSelectedDate(formatDate(startOfWeek));
+      
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6); // Set to Saturday
+      endOfWeek.setHours(23, 59, 59, 999); // Set time to 11:59:59.999 PM
+
+      // Store the range as an object or separate values
+      setSelectedDate({ start: formatDate(startOfWeek), end: formatDate(endOfWeek) });
       setDateFilter('custom');
     } else if (value === 'last-week') {
       const today = new Date();
       const startOfLastWeek = new Date(today);
-      startOfLastWeek.setDate(today.getDate() - today.getDay() - 7);
-      setSelectedDate(formatDate(startOfLastWeek));
+      startOfLastWeek.setDate(today.getDate() - today.getDay() - 7); // Start of last week (Sunday)
+      const endOfLastWeek = new Date(startOfLastWeek);
+      endOfLastWeek.setDate(startOfLastWeek.getDate() + 6); // End of last week (Saturday)
+
+      setSelectedDate({ start: formatDate(startOfLastWeek), end: formatDate(endOfLastWeek) });
       setDateFilter('custom');
     }
   };
@@ -394,6 +427,7 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-text-secondary-light dark:text-text-secondary-dark flex-shrink-0" />
               <select
+                aria-label="Filter by status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as ServiceStatus | 'all')}
                 className="block w-full pl-3 pr-10 py-2.5 sm:py-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-brand-blue text-sm transition-all duration-200"
