@@ -44,27 +44,12 @@ const CustomerView: React.FC = () => {
   const getPackageName = (id: string) => packages.find(p => p.id === id)?.name || '...';
 
   const activeVehicles = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const combined = [...cars, ...motorcycles];
+    // Only hide vehicles if status is completed or cancelled, regardless of day
     return combined
-      .filter(v => {
-        const isMotorcycle = 'vehicle_type' in v && v.vehicle_type === 'motorcycle';
-        const hasPackage = isMotorcycle
-          ? !!v.package
-          : packages.some(p => p.name === (v as Car).service);
-        const isActiveStatus = ['waiting', 'in-progress', 'payment-pending'].includes(v.status);
-        if (!isActiveStatus) return false;
-        if (hasPackage) {
-          // Show package vehicles until completed/cancelled
-          return v.status !== 'completed' && v.status !== 'cancelled';
-        } else {
-          // Non-package vehicles: only show if created today
-          return new Date(v.created_at) >= today;
-        }
-      })
+      .filter(v => v.status !== 'completed' && v.status !== 'cancelled')
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-  }, [cars, motorcycles, packages]);
+  }, [cars, motorcycles]);
 
   const columns = useMemo(() => [
     { title: 'WAITING IN QUEUE', vehicles: activeVehicles.filter(v => v.status === 'waiting'), color: '#3b82f6' },
@@ -72,8 +57,18 @@ const CustomerView: React.FC = () => {
     { title: 'READY FOR PAYMENT', vehicles: activeVehicles.filter(v => v.status === 'payment-pending'), color: '#f59e0b' },
   ], [activeVehicles]);
 
-  // Dynamically adjust sizes based on vehicle count
-  const getSizeClasses = (count: number) => {
+  // Dynamically adjust sizes based on vehicle count and column split
+  const getSizeClasses = (count: number, isSplitIntoColumns: boolean = false) => {
+    // If split into columns, use smaller sizes
+    if (isSplitIntoColumns) {
+      return {
+        plate: 'text-[1.0em]',
+        model: 'text-[0.75em]',
+        service: 'text-[0.8em]',
+        spacing: 'py-2 px-2 mb-2 gap-1'
+      };
+    }
+    
     // Base on how many items we have to determine the optimal size
     if (count <= 2) return {
       plate: 'text-[2em]',
@@ -101,7 +96,7 @@ const CustomerView: React.FC = () => {
     };
   };
 
-  const VehicleCard = ({ vehicle, plateColor, columnVehicleCount }: { vehicle: Car | Motor, plateColor: string, columnVehicleCount: number }) => {
+  const VehicleCard = ({ vehicle, plateColor, columnVehicleCount, isSplitIntoColumns }: { vehicle: Car | Motor, plateColor: string, columnVehicleCount: number, isSplitIntoColumns?: boolean }) => {
     const isMotorcycle = 'vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle';
     const crewMembers = vehicle.crew?.map(id => crews.find(c => c.id === id)?.name).filter(Boolean) || [];
 
@@ -138,7 +133,7 @@ const CustomerView: React.FC = () => {
 
       if (badgeNames.length === 0) return null;
 
-      const sizes = getSizeClasses(columnVehicleCount);
+      const sizes = getSizeClasses(columnVehicleCount, isSplitIntoColumns);
       return badgeNames.map((name, idx) => (
         <span 
           key={`${name}-${idx}`} 
@@ -158,7 +153,7 @@ const CustomerView: React.FC = () => {
       ));
     };
 
-    const sizes = getSizeClasses(columnVehicleCount);
+    const sizes = getSizeClasses(columnVehicleCount, isSplitIntoColumns);
     
     return (
       <div className={`${sizes.spacing} transition-all duration-300`}>
@@ -273,11 +268,13 @@ const CustomerView: React.FC = () => {
         }}
       >
         {columns.map(column => {
-          // Split vehicles into two columns if more than 5
+          // Split vehicles into groups of 4 rows maximum
           let vehicleGroups: Array<Array<Car | Motor>> = [];
-          if (column.vehicles.length > 5) {
-            const mid = Math.ceil(column.vehicles.length / 2);
-            vehicleGroups = [column.vehicles.slice(0, mid), column.vehicles.slice(mid)];
+          if (column.vehicles.length > 4) {
+            // Split into groups of 4
+            for (let i = 0; i < column.vehicles.length; i += 4) {
+              vehicleGroups.push(column.vehicles.slice(i, i + 4));
+            }
           } else {
             vehicleGroups = [column.vehicles];
           }
@@ -340,6 +337,7 @@ const CustomerView: React.FC = () => {
                             vehicle={v} 
                             plateColor={plateColor} 
                             columnVehicleCount={column.vehicles.length}
+                            isSplitIntoColumns={vehicleGroups.length > 1}
                           />
                         </div>
                       ))
