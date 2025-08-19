@@ -16,6 +16,8 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
   const [dateFilter, setDateFilter] = useState('today');
   const [selectedDate, setSelectedDate] = useState<string | { start: string; end: string }>('');
   const [showCalendar, setShowCalendar] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
 
   // Calendar state
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -125,6 +127,18 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
   const paymentPendingCount = dateFilteredVehicles.filter(vehicle => vehicle.status === 'payment-pending').length;
   const cancelledCount = dateFilteredVehicles.filter(vehicle => vehicle.status === 'cancelled').length;
   const completedCount = dateFilteredVehicles.filter(vehicle => vehicle.status === 'completed').length;
+
+  // Get vehicle history regardless of date filter
+  const getVehicleHistory = (searchPlate: string) => {
+    if (!searchPlate) return [];
+    return vehicles
+      .filter(vehicle => vehicle.plate.toLowerCase().includes(searchPlate.toLowerCase()))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  };
+
+  const vehicleHistory = useMemo(() => {
+    return getVehicleHistory(historySearch);
+  }, [vehicles, historySearch]);
 
   // Calendar functions
   const getDaysInMonth = (date: Date) => {
@@ -441,6 +455,77 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
               </select>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Vehicle History Search Section */}
+      <div className="bg-surface-light dark:bg-surface-dark p-3 sm:p-4 rounded-lg shadow-sm border border-border-light dark:border-border-dark">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark">Vehicle History Search</h3>
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="text-xs px-2 py-1 bg-brand-blue hover:bg-brand-dark-blue text-white rounded transition-colors"
+            >
+              {showHistory ? 'Hide History' : 'Show History'}
+            </button>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search plate number for full history..."
+              value={historySearch}
+              onChange={(e) => setHistorySearch(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-md leading-5 placeholder-gray-500 focus:outline-none focus:ring-brand-blue focus:border-brand-blue sm:text-sm"
+            />
+          </div>
+
+          {showHistory && historySearch && (
+            <div className="mt-2">
+              {vehicleHistory.length > 0 ? (
+                <div className="space-y-2">
+                  {vehicleHistory.map((vehicle) => (
+                    <div
+                      key={vehicle.id}
+                      className="p-3 bg-background-light dark:bg-background-dark rounded-lg border border-border-light dark:border-border-dark"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark">{vehicle.plate}</h4>
+                          <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">{vehicle.model}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="inline-block px-2 py-1 text-xs rounded-full bg-brand-blue/10 text-brand-blue">
+                            {vehicle.status}
+                          </span>
+                          <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark mt-1">
+                            {new Date(vehicle.created_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      {'service' in vehicle && (
+                        <p className="mt-2 text-xs text-text-secondary-light dark:text-text-secondary-dark">
+                          Service: {vehicle.service}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark text-center py-4">
+                  No history found for this plate number
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
