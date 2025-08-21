@@ -424,10 +424,30 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       addActiveOperation(operationId);
-      const { error } = await supabase
-        .from('cars')
-        .update({ ...sanitizedUpdates, updated_at: new Date().toISOString() })
-        .eq('id', id);
+      // Add retry logic for completion status
+      const maxRetries = sanitizedUpdates.status === 'completed' ? 3 : 1;
+      let attempt = 0;
+      let error;
+
+      while (attempt < maxRetries) {
+        const result = await supabase
+          .from('cars')
+          .update({ ...sanitizedUpdates, updated_at: new Date().toISOString() })
+          .eq('id', id);
+        
+        error = result.error;
+        
+        if (!error) break;
+        
+        // If it's a completion status and update failed, wait briefly and retry
+        if (sanitizedUpdates.status === 'completed') {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between retries
+        } else {
+          break;
+        }
+        
+        attempt++;
+      }
 
       if (error) {
         console.error('Supabase error updating car:', error);
@@ -436,7 +456,20 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         } else if (error.code === '42P01') {
           throw new Error('Database table not found. Please contact support.');
         } else {
-        throw new Error(`Failed to update vehicle: ${error.message}`);
+          throw new Error(`Failed to update vehicle: ${error.message}`);
+        }
+      }
+
+      // Verify the update if it's a completion status
+      if (sanitizedUpdates.status === 'completed') {
+        const { data: verifyData } = await supabase
+          .from('cars')
+          .select('status')
+          .eq('id', id)
+          .single();
+        
+        if (!verifyData || verifyData.status !== 'completed') {
+          throw new Error('Failed to verify completion status update. Please try again.');
         }
       }
       // Optimistically update local state
@@ -610,10 +643,30 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       addActiveOperation(operationId);
-      const { error } = await supabase
-        .from('motorcycles')
-        .update({ ...sanitizedUpdates, updated_at: new Date().toISOString() })
-        .eq('id', id);
+      // Add retry logic for completion status
+      const maxRetries = sanitizedUpdates.status === 'completed' ? 3 : 1;
+      let attempt = 0;
+      let error;
+
+      while (attempt < maxRetries) {
+        const result = await supabase
+          .from('motorcycles')
+          .update({ ...sanitizedUpdates, updated_at: new Date().toISOString() })
+          .eq('id', id);
+        
+        error = result.error;
+        
+        if (!error) break;
+        
+        // If it's a completion status and update failed, wait briefly and retry
+        if (sanitizedUpdates.status === 'completed') {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between retries
+        } else {
+          break;
+        }
+        
+        attempt++;
+      }
 
       if (error) {
         console.error('Supabase error updating motorcycle:', error);
@@ -623,6 +676,19 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           throw new Error('Database table not found. Please contact support.');
         } else {
           throw new Error(`Failed to update motorcycle: ${error.message}`);
+        }
+      }
+
+      // Verify the update if it's a completion status
+      if (sanitizedUpdates.status === 'completed') {
+        const { data: verifyData } = await supabase
+          .from('motorcycles')
+          .select('status')
+          .eq('id', id)
+          .single();
+        
+        if (!verifyData || verifyData.status !== 'completed') {
+          throw new Error('Failed to verify completion status update. Please try again.');
         }
       }
       // Optimistically update local state

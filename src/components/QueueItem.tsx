@@ -124,6 +124,22 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true }
     }
     try {
       setIsUpdating(true);
+
+      // For completion, ensure we have a stable update by doing database update first
+      if (newStatus === 'completed') {
+        const updates = {
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+          completion_time: new Date().toISOString() // Add completion timestamp
+        };
+        
+        // Update database first before SMS or local state
+        if (isMotorcycle) {
+          await updateMotorcycle(vehicle.id, updates);
+        } else {
+          await updateCar(vehicle.id, updates);
+        }
+      }
       
       // Prepare the service type information
       let serviceType = '';
@@ -166,19 +182,21 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true }
         });
       }
 
-      // Update the vehicle status in the database
-      if (isMotorcycle) {
-        const updates: Partial<Motor> = {
-          status: newStatus as ServiceStatus,
-          updated_at: new Date().toISOString(),
-        };
-        await updateMotorcycle(vehicle.id, updates);
-      } else {
-        const updates: Partial<Car> = {
-          status: newStatus as ServiceStatus,
-          updated_at: new Date().toISOString(),
-        };
-        await updateCar(vehicle.id, updates);
+      // Update the vehicle status in the database (skip if already updated for completion)
+      if (newStatus !== 'completed') {
+        if (isMotorcycle) {
+          const updates: Partial<Motor> = {
+            status: newStatus as ServiceStatus,
+            updated_at: new Date().toISOString(),
+          };
+          await updateMotorcycle(vehicle.id, updates);
+        } else {
+          const updates: Partial<Car> = {
+            status: newStatus as ServiceStatus,
+            updated_at: new Date().toISOString(),
+          };
+          await updateCar(vehicle.id, updates);
+        }
       }
       setIsAssigningCrew(false);
     } catch (error) {
