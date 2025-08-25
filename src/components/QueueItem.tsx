@@ -130,7 +130,7 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true }
         const updates = {
           status: newStatus,
           updated_at: new Date().toISOString(),
-          completion_time: new Date().toISOString() // Add completion timestamp
+          // completed_at will be set automatically by database trigger
         };
         
         // Update database first before SMS or local state

@@ -44,7 +44,7 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
     return vehicles
       .filter(vehicle => {
         // Apply date filter
-        const vehicleDate = new Date(vehicle.status === 'completed' ? vehicle.updated_at : vehicle.created_at);
+        const vehicleDate = new Date(vehicle.status === 'completed' && vehicle.completed_at ? vehicle.completed_at : vehicle.created_at);
         const today = new Date();
         // Set time to noon for consistent comparison
         const vehicleDateNoon = new Date(vehicleDate.getFullYear(), vehicleDate.getMonth(), vehicleDate.getDate(), 12, 0, 0, 0);
@@ -96,7 +96,7 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
   // Get vehicles for the selected date (for statistics)
   const dateFilteredVehicles = useMemo(() => {
     return vehicles.filter(vehicle => {
-      const vehicleDate = new Date(vehicle.status === 'completed' ? vehicle.updated_at : vehicle.created_at);
+      const vehicleDate = new Date(vehicle.status === 'completed' && vehicle.completed_at ? vehicle.completed_at : vehicle.created_at);
       const today = new Date();
       // Set time to noon for consistent comparison
       const vehicleDateNoon = new Date(vehicleDate.getFullYear(), vehicleDate.getMonth(), vehicleDate.getDate(), 12, 0, 0, 0);

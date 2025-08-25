@@ -62,6 +62,7 @@ export interface Car {
   total_cost: number;
   created_at: string;
   updated_at: string;
+  completed_at?: string;
   is_deleted?: boolean;
 }
 
@@ -79,6 +80,7 @@ export interface Motor {
   vehicle_type: 'motorcycle';
   created_at: string;
   updated_at: string;
+  completed_at?: string;
   is_deleted?: boolean;
 }
 

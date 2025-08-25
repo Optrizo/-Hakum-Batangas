@@ -21,8 +21,10 @@ export interface Database {
           phone: string
           created_at: string | null
           updated_at: string | null
+          completed_at: string | null
           total_cost: number | null
           services: string[] | null
+          is_deleted: boolean | null
         }
         Insert: {
           id?: string
@@ -35,8 +37,10 @@ export interface Database {
           crew?: string[] | null
           created_at?: string | null
           updated_at?: string | null
+          completed_at?: string | null
           total_cost?: number | null
           services?: string[] | null
+          is_deleted?: boolean | null
         }
         Update: {
           id?: string
@@ -49,8 +53,63 @@ export interface Database {
           crew?: string[] | null
           created_at?: string | null
           updated_at?: string | null
+          completed_at?: string | null
           total_cost?: number | null
           services?: string[] | null
+          is_deleted?: boolean | null
+        }
+      }
+      motorcycles: {
+        Row: {
+          id: string
+          plate: string
+          model: string
+          size: string
+          status: string
+          crew: string[] | null
+          phone: string | null
+          created_at: string | null
+          updated_at: string | null
+          completed_at: string | null
+          total_cost: number | null
+          services: string[] | null
+          package: string | null
+          vehicle_type: string
+          is_deleted: boolean | null
+        }
+        Insert: {
+          id?: string
+          plate: string
+          model: string
+          size: string
+          status?: string
+          crew?: string[] | null
+          phone?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          completed_at?: string | null
+          total_cost?: number | null
+          services?: string[] | null
+          package?: string | null
+          vehicle_type?: string
+          is_deleted?: boolean | null
+        }
+        Update: {
+          id?: string
+          plate?: string
+          model?: string
+          size?: string
+          status?: string
+          crew?: string[] | null
+          phone?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          completed_at?: string | null
+          total_cost?: number | null
+          services?: string[] | null
+          package?: string | null
+          vehicle_type?: string
+          is_deleted?: boolean | null
         }
       }
       services: {
