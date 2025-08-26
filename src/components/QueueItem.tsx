@@ -12,9 +12,10 @@ import { sendSMS } from '../../MyBusyBee/scripts/busybee-sms.js';
 interface QueueItemProps {
   vehicle: Car | Motor;
   countCrewAsBusy?: boolean; // Add this prop
+  queuePosition?: number; // Add queue position for waiting vehicles
 }
 
-const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true }) => {
+const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, queuePosition }) => {
   const { updateCar, updateMotorcycle, removeCar, removeMotorcycle, crews, cars, motorcycles, packages, services } = useQueue();
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -425,9 +426,17 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true }
         <div className="flex items-start justify-between">
             <div className="flex-grow min-w-0">
             <div className="flex flex-col xs:flex-row xs:items-center gap-x-3 gap-y-1 mb-1">
-              <div className="flex-shrink-0 bg-brand-blue text-white font-bold text-sm px-2.5 py-1 rounded-md">
-              {vehicle.plate}
-                    </div>
+              <div className="flex items-center gap-2">
+                {/* Queue Number for Waiting Vehicles */}
+                {vehicle.status === 'waiting' && queuePosition && (
+                  <div className="flex-shrink-0 bg-green-600 text-white font-bold text-lg px-3 py-1.5 rounded-full border-2 border-green-500 shadow-md">
+                    #{queuePosition}
+                  </div>
+                )}
+                <div className="flex-shrink-0 bg-brand-blue text-white font-bold text-sm px-2.5 py-1 rounded-md">
+                  {vehicle.plate}
+                </div>
+              </div>
               <span className="text-base font-medium text-text-primary-light dark:text-text-primary-dark truncate">{vehicle.model}</span>
               {isMotorcycle && (
                 <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">

@@ -576,13 +576,19 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
       ) : (
         <div className="space-y-4">
           {filteredVehicles.length > 0 ? (
-            filteredVehicles.map(vehicle => (
-              <QueueItem 
-                key={vehicle.id} 
-                vehicle={vehicle} 
-                countCrewAsBusy={vehicle.status !== 'payment-pending'} // Add this prop
-              />
-            ))
+            filteredVehicles.map((vehicle, index) => {
+              // Calculate queue position only for waiting vehicles
+              const queuePosition = statusFilter === 'waiting' && vehicle.status === 'waiting' ? index + 1 : undefined;
+              
+              return (
+                <QueueItem 
+                  key={vehicle.id} 
+                  vehicle={vehicle} 
+                  countCrewAsBusy={vehicle.status !== 'payment-pending'}
+                  queuePosition={queuePosition}
+                />
+              );
+            })
       ) : (
             <div className="text-center p-8 bg-surface-light dark:bg-surface-dark rounded-lg">
               <p className="font-medium">No {vehicleType === 'car' ? 'cars' : 'motorcycles'} match the current filters.</p>
