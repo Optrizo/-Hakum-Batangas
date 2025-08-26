@@ -63,6 +63,7 @@ export interface Car {
   created_at: string;
   updated_at: string;
   completed_at?: string;
+  cancellation_reason?: string;
   is_deleted?: boolean;
 }
 
@@ -81,6 +82,7 @@ export interface Motor {
   created_at: string;
   updated_at: string;
   completed_at?: string;
+  cancellation_reason?: string;
   is_deleted?: boolean;
 }
 

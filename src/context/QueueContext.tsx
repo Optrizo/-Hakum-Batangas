@@ -421,6 +421,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (updates.service !== undefined) sanitizedUpdates.service = updates.service ? updates.service.trim() : '';
     if (updates.services !== undefined) sanitizedUpdates.services = updates.services;
     if (updates.crew !== undefined) sanitizedUpdates.crew = updates.crew;
+    if (updates.cancellation_reason !== undefined) sanitizedUpdates.cancellation_reason = updates.cancellation_reason ? updates.cancellation_reason.trim() : undefined;
 
     try {
       addActiveOperation(operationId);
@@ -640,6 +641,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (updates.services !== undefined) sanitizedUpdates.services = updates.services;
     if (updates.crew !== undefined) sanitizedUpdates.crew = updates.crew;
     if (updates.package !== undefined) sanitizedUpdates.package = updates.package;
+    if (updates.cancellation_reason !== undefined) sanitizedUpdates.cancellation_reason = updates.cancellation_reason ? updates.cancellation_reason.trim() : undefined;
 
     try {
       addActiveOperation(operationId);
@@ -1036,11 +1038,12 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const calculateBusyCrews = () => {
     const busyCrewIds = new Set<string>();
+    const allVehicles = [...cars, ...motorcycles];
     
     // Only count crew as busy if vehicle is in-progress
-    vehicles.forEach(vehicle => {
+    allVehicles.forEach((vehicle: Car | Motor) => {
       if (vehicle.status === 'in-progress' && vehicle.crew) {
-        vehicle.crew.forEach(crewId => busyCrewIds.add(crewId));
+        vehicle.crew.forEach((crewId: string) => busyCrewIds.add(crewId));
       }
     });
     

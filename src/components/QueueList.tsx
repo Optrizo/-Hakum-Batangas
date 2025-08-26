@@ -128,6 +128,13 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
   const cancelledCount = dateFilteredVehicles.filter(vehicle => vehicle.status === 'cancelled').length;
   const completedCount = dateFilteredVehicles.filter(vehicle => vehicle.status === 'completed').length;
 
+  // Calculate daily total cost for completed vehicles
+  const completedDailyTotal = useMemo(() => {
+    return dateFilteredVehicles
+      .filter(vehicle => vehicle.status === 'completed')
+      .reduce((total, vehicle) => total + (vehicle.total_cost || 0), 0);
+  }, [dateFilteredVehicles]);
+
   // Get vehicle history regardless of date filter
   const getVehicleHistory = (searchPlate: string) => {
     if (!searchPlate) return [];
@@ -499,7 +506,11 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
                           <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">{vehicle.model}</p>
                         </div>
                         <div className="text-right">
-                          <span className="inline-block px-2 py-1 text-xs rounded-full bg-brand-blue/10 text-brand-blue">
+                          <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                            vehicle.status === 'cancelled' 
+                              ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                              : 'bg-brand-blue/10 text-brand-blue'
+                          }`}>
                             {vehicle.status}
                           </span>
                           <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark mt-1">
@@ -515,6 +526,12 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
                         <p className="mt-2 text-xs text-text-secondary-light dark:text-text-secondary-dark">
                           Service: {vehicle.service}
                         </p>
+                      )}
+                      {vehicle.status === 'cancelled' && 'cancellation_reason' in vehicle && vehicle.cancellation_reason && (
+                        <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+                          <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">Cancellation Reason:</p>
+                          <p className="text-xs text-red-700 dark:text-red-300">{vehicle.cancellation_reason}</p>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -534,7 +551,7 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
           { title: 'Waiting', count: waitingCount, status: 'waiting' },
           { title: 'In Progress', count: inProgressCount, status: 'in-progress' },
           { title: 'Payment', count: paymentPendingCount, status: 'payment-pending' },
-          { title: 'Completed', count: completedCount, status: 'completed' },
+          { title: 'Completed', count: completedCount, status: 'completed', total: completedDailyTotal },
           { title: 'Cancelled', count: cancelledCount, status: 'cancelled' },
           { title: 'All', count: dateFilteredVehicles.length, status: 'all' }
         ].map(item => (
@@ -545,6 +562,11 @@ const QueueList: React.FC<QueueListProps> = ({ vehicles, vehicleType }) => {
           >
             <p className={`text-sm font-medium ${statusFilter === item.status ? 'text-white/80' : 'text-text-secondary-light dark:text-text-secondary-dark'}`}>{item.title}</p>
             <p className="text-2xl font-bold">{item.count}</p>
+            {item.status === 'completed' && item.total !== undefined && (
+              <p className={`text-xs mt-1 ${statusFilter === item.status ? 'text-white/70' : 'text-green-600 dark:text-green-400'}`}>
+                ₱{item.total.toLocaleString()} total
+              </p>
+            )}
           </div>
         ))}
       </div>

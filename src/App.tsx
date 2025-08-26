@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import Layout from './components/Layout';
 import QueueManager from './components/QueueManager';
 import CustomerView from './components/CustomerView';
+import MobileView from './components/MobileView';
 import CrewManager from './components/CrewManager';
 import ServicesPage from './components/ServicesPage';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -20,6 +21,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Layout><QueueManager /></Layout>} />
           <Route path="/customer" element={<CustomerView />} />
+          <Route path="/mobile" element={<MobileView />} />
           <Route path="/crew" element={<Layout><CrewManager /></Layout>} />
           <Route path="/services" element={<Layout><ServicesPage /></Layout>} />
           <Route path="/motorcycle-services" element={<Layout><MotorcycleServicesPage /></Layout>} />

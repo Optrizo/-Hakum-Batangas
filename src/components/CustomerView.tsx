@@ -16,7 +16,7 @@ const CustomerView: React.FC = () => {
   const { cars, motorcycles, services, packages, crews, loading } = useQueue();
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  console.log('CustomerView debug:', { loading, cars, motorcycles });
+  console.log('CustomerView debug:', { loading, cars: cars.length, motorcycles: motorcycles.length });
 
   useEffect(() => {
     // Update every second
@@ -237,7 +237,7 @@ const CustomerView: React.FC = () => {
             className="text-lg font-bold tracking-wider"
             style={{ color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.25)' }}
           >
-            HAKUM AUTO CARE BACOOR
+            HAKUM AUTO CARE BATANGAS
           </h1>
         </div>
         <div className="text-right">

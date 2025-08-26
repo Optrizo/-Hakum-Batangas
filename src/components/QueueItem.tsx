@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useQueue } from '../context/QueueContext';
 import { Car, Motor, ServiceStatus } from '../types';
 import StatusBadge from './StatusBadge';
-import { Edit2, Trash2, Check, X, DollarSign, CheckCircle, Wrench as Tool, Users, XCircle, ChevronDown } from 'lucide-react';
+import { Edit2, Check, X, DollarSign, CheckCircle, Wrench as Tool, Users, XCircle, ChevronDown } from 'lucide-react';
 import EditCarForm from './EditCarForm';
 import EditMotorcycleForm from './EditMotorcycleForm';
+import CancellationModal from './CancellationModal';
 // @ts-ignore
 import { sendSMS } from '../../MyBusyBee/scripts/busybee-sms.js';
 
@@ -16,13 +17,14 @@ interface QueueItemProps {
 const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true }) => {
   const { updateCar, updateMotorcycle, removeCar, removeMotorcycle, crews, cars, motorcycles, packages, services } = useQueue();
   const [isEditing, setIsEditing] = useState(false);
-  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [isAssigningCrew, setIsAssigningCrew] = useState(false);
   const [showCrewWarning, setShowCrewWarning] = useState(false);
   const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>(vehicle.crew || []);
   const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 640);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isMotorcycle = 'vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle';
 
@@ -318,6 +320,38 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true }
     setSelectedCrewIds(vehicle.crew || []);
   };
 
+  const handleCancellation = async (reason: string) => {
+    try {
+      setIsUpdating(true);
+      
+      // Update the vehicle status to cancelled with reason
+      if (isMotorcycle) {
+        const updates: Partial<Motor> = {
+          status: 'cancelled' as ServiceStatus,
+          cancellation_reason: reason,
+          updated_at: new Date().toISOString(),
+        };
+        await updateMotorcycle(vehicle.id, updates);
+      } else {
+        const updates: Partial<Car> = {
+          status: 'cancelled' as ServiceStatus,
+          cancellation_reason: reason,
+          updated_at: new Date().toISOString(),
+        };
+        await updateCar(vehicle.id, updates);
+      }
+      
+      setShowCancellationModal(false);
+      setIsAssigningCrew(false);
+    } catch (error) {
+      console.error('Error cancelling vehicle:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to cancel service: ${errorMessage}. Please try again.`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const toggleCollapse = (e: React.MouseEvent) => {
     // Prevent toggling when clicking on a button or interactive element
     if (e.target instanceof HTMLElement && e.target.closest('button, a, input')) {
@@ -456,6 +490,14 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true }
                 <span className="text-text-secondary-light dark:text-text-secondary-dark text-sm">Not assigned</span>
           )}
         </div>
+        
+        {/* Cancellation Reason Display */}
+        {vehicle.status === 'cancelled' && vehicle.cancellation_reason && (
+          <div className="mb-3 sm:mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <h4 className="text-xs font-medium text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">Cancellation Reason</h4>
+            <p className="text-sm text-red-700 dark:text-red-300">{vehicle.cancellation_reason}</p>
+          </div>
+        )}
         {isAssigningCrew && vehicle.status !== 'completed' && (
               <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-background-light dark:bg-black/50 rounded-lg border border-border-light dark:border-border-dark">
                 <div className="flex flex-col space-y-3">
@@ -558,7 +600,7 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true }
                 )}
                 {getValidActions().includes('cancelled') && vehicle.status !== 'completed' && vehicle.status !== 'cancelled' && (
                   <button
-                    onClick={() => handleQuickAction('cancelled')}
+                    onClick={() => setShowCancellationModal(true)}
                     disabled={isUpdating}
                     className="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-xs font-medium bg-red-500/20 text-red-500 hover:bg-red-500/30 dark:text-red-400 dark:hover:bg-red-500/40 transition-colors disabled:opacity-50"
                   >
@@ -585,46 +627,27 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true }
                       ? 'bg-brand-blue text-white border-transparent' 
                       : 'bg-surface-light dark:bg-gray-700 text-text-secondary-light dark:text-text-secondary-dark border-border-light dark:border-border-dark hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
-              disabled={isUpdating || isDeleting}
+              disabled={isUpdating}
                   title="Assign Crew"
             >
                   <Users className="h-4 w-4" />
                   <span className="sr-only">Assign Crew</span>
             </button>
-            {isConfirmingDelete ? (
-                  <div className="flex gap-2 items-center">
-                <button
-                  onClick={handleDelete}
-                      className="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-xs font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors" 
-                  disabled={isDeleting}
-                >
-                      <Check className="h-4 w-4 mr-1.5" />
-                  {isDeleting ? 'Deleting...' : 'Confirm'}
-                </button>
-                <button
-                  onClick={cancelDelete}
-                      className="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-xs font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors"
-                >
-                      <X className="h-4 w-4 mr-1.5" />
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleDelete}
-                    className="inline-flex items-center p-2 border border-border-light dark:border-border-dark shadow-sm text-xs font-medium rounded-md text-red-500 hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-light dark:focus:ring-offset-surface-dark focus:ring-red-500 transition-colors"
-                disabled={isUpdating || isDeleting}
-                    title="Delete Vehicle"
-              >
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Delete</span>
-              </button>
-            )}
+
           </div>
         </div>
           </div>
         )}
       </div>
+      
+      {/* Cancellation Modal */}
+      <CancellationModal
+        isOpen={showCancellationModal}
+        onClose={() => setShowCancellationModal(false)}
+        onConfirm={handleCancellation}
+        vehicle={vehicle}
+        isLoading={isUpdating}
+      />
     </div>
   );
 };

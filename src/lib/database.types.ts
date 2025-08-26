@@ -22,6 +22,7 @@ export interface Database {
           created_at: string | null
           updated_at: string | null
           completed_at: string | null
+          cancellation_reason: string | null
           total_cost: number | null
           services: string[] | null
           is_deleted: boolean | null
@@ -38,6 +39,7 @@ export interface Database {
           created_at?: string | null
           updated_at?: string | null
           completed_at?: string | null
+          cancellation_reason?: string | null
           total_cost?: number | null
           services?: string[] | null
           is_deleted?: boolean | null
@@ -54,6 +56,7 @@ export interface Database {
           created_at?: string | null
           updated_at?: string | null
           completed_at?: string | null
+          cancellation_reason?: string | null
           total_cost?: number | null
           services?: string[] | null
           is_deleted?: boolean | null
@@ -71,6 +74,7 @@ export interface Database {
           created_at: string | null
           updated_at: string | null
           completed_at: string | null
+          cancellation_reason: string | null
           total_cost: number | null
           services: string[] | null
           package: string | null
@@ -88,6 +92,7 @@ export interface Database {
           created_at?: string | null
           updated_at?: string | null
           completed_at?: string | null
+          cancellation_reason?: string | null
           total_cost?: number | null
           services?: string[] | null
           package?: string | null
@@ -105,6 +110,7 @@ export interface Database {
           created_at?: string | null
           updated_at?: string | null
           completed_at?: string | null
+          cancellation_reason?: string | null
           total_cost?: number | null
           services?: string[] | null
           package?: string | null

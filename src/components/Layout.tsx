@@ -22,6 +22,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navLinks = [
     { to: '/', label: 'Queue' },
     { to: '/customer', label: 'Customer View' },
+    { to: '/mobile', label: 'Mobile View' },
     { to: '/crew', label: 'Crew' },
     { to: '/services', label: 'Car Services' },
     { to: '/motorcycle-services', label: 'Motorcycle Services' },
