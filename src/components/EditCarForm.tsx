@@ -160,6 +160,14 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
       newErrors.crew = 'Assign at least one crew member for cars "In Progress".';
     }
 
+    // Enhanced crew validation - check if assigned crew are busy
+    if (formData.status === 'in-progress' && formData.crew.length > 0) {
+      const assignedCrewAreBusy = formData.crew.some(crewId => busyCrewIds.has(crewId));
+      if (assignedCrewAreBusy) {
+        newErrors.crew = 'Some assigned crew members are currently busy. Please select different crew members.';
+      }
+    }
+
     // Require at least one service or package for WAITING or IN-PROGRESS status
     if (
       (formData.status === 'waiting' || formData.status === 'in-progress') &&
@@ -301,7 +309,12 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
 
       // If status is "in-progress" and no services/packages, set total_cost to 0 and preserve initialCost
       let payload = {
-        ...formData,
+        plate: formData.plate,
+        model: formData.model,
+        size: formData.size,
+        status: formData.status,
+        phone: formData.phone.trim() ? formData.phone : '',
+        crew: formData.crew,
         total_cost: totalCost,
         service: allServiceNames.join(', '),
         services: allSelectedServiceIds,

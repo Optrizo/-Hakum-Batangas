@@ -17,6 +17,26 @@ interface EditMotorcycleFormProps {
 
 const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onComplete }) => {
   const { updateMotorcycle, services, packages, crews, motorcycles } = useQueue();
+
+  // Find all crew members who are currently busy on other motorcycles
+  const busyCrewIds = useMemo(() => {
+    const today = new Date();
+    const isToday = (dateString: string) => {
+      if (!dateString) return false;
+      const date = new Date(dateString);
+      return date.getDate() === today.getDate() &&
+             date.getMonth() === today.getMonth() &&
+             date.getFullYear() === today.getFullYear();
+    };
+
+    const busyIds = new Set<string>();
+    motorcycles.forEach(m => {
+      if (m.status === 'in-progress' && m.id !== motorcycle.id && isToday(m.created_at)) {
+        m.crew?.forEach(crewId => busyIds.add(crewId));
+      }
+    });
+    return busyIds;
+  }, [motorcycles, motorcycle.id]);
   
   const [formData, setFormData] = useState({
     plate: motorcycle.plate,
@@ -166,6 +186,14 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
       newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
     }
 
+    // Enhanced crew validation - check if assigned crew are busy
+    if (formData.status === 'in-progress' && formData.crew.length > 0) {
+      const assignedCrewAreBusy = formData.crew.some(crewId => busyCrewIds.has(crewId));
+      if (assignedCrewAreBusy) {
+        newErrors.crew = 'Some assigned crew members are currently busy. Please select different crew members.';
+      }
+    }
+
     // Always require at least one service or package
     if (formData.selectedServices.length === 0 && formData.selectedPackages.length === 0) {
       newErrors.services = 'Please select at least one service or package.';
@@ -301,14 +329,16 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
         ...selectedServices.map(s => s.name),
         ...selectedPackages.map(p => p.name)
       ];
-      await updateMotorcycle(motorcycle.id, {
+      
+      // Create payload with correct structure - only include database fields
+      const payload = {
         plate: formData.plate,
         model: formData.model,
         size: formData.size,
         status: formData.status,
         phone: formData.phone.trim() ? formData.phone : '',
         crew: formData.crew,
-        services: allSelectedServiceIds,
+        services: allSelectedServiceIds, // Combined service and package IDs
         package:
           formData.selectedPackages.length === 0
             ? null
@@ -318,7 +348,9 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
                   ? formData.selectedPackages
                   : null),
         total_cost: formData.total_cost,
-      });
+      };
+      
+      await updateMotorcycle(motorcycle.id, payload);
       onComplete();
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'An unknown error occurred. Please try again.');
@@ -585,22 +617,33 @@ const EditMotorcycleForm: React.FC<EditMotorcycleFormProps> = ({ motorcycle, onC
       </div>
       {isCrewOpen && (
         <div className="mt-4 space-y-2 sm:space-y-3">
-          {crews.map((crewMember) => (
-            <label 
-              key={crewMember.id} 
-              className="flex items-center justify-between p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <div className="flex items-center min-w-0 flex-1">
-                <input
-                  type="checkbox"
-                  checked={formData.crew.includes(crewMember.id)}
-                  onChange={() => handleCrewToggle(crewMember.id)}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
-                />
-                <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200 truncate">{crewMember.name}</span>
-              </div>
-            </label>
-          ))}
+          {crews.map((crewMember) => {
+            const isBusy = busyCrewIds.has(crewMember.id);
+            return (
+              <label 
+                key={crewMember.id} 
+                className={`flex items-center justify-between p-2 sm:p-3 rounded-lg transition-colors ${
+                  isBusy 
+                    ? 'cursor-not-allowed bg-gray-200 dark:bg-gray-600 opacity-70' 
+                    : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                <div className="flex items-center min-w-0 flex-1">
+                  <input
+                    type="checkbox"
+                    checked={formData.crew.includes(crewMember.id)}
+                    onChange={() => !isBusy && handleCrewToggle(crewMember.id)}
+                    disabled={isBusy}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                  />
+                  <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200 truncate">{crewMember.name}</span>
+                </div>
+                {isBusy && (
+                  <span className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/50 px-2 py-1 rounded-full">Busy</span>
+                )}
+              </label>
+            );
+          })}
         </div>
       )}
     </div>
