@@ -21,7 +21,7 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   const [formData, setFormData] = useState({
     plate: '',
     model: '',
-    size: 'small' as const,
+    size: 'small' as Motor['size'],
     status: 'waiting' as 'waiting' | 'in-progress',
     phone: '',
     crew: [] as string[],
@@ -49,6 +49,27 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
   // Filter motorcycle services and packages
   const motorcycleServices = useMemo(() => services.filter(s => s.vehicle_type === 'motorcycle'), [services]);
   const motorcyclePackages = useMemo(() => packages.filter(p => p.vehicle_type === 'motorcycle'), [packages]);
+
+  // Check which crew members are currently busy
+  const busyCrewIds = useMemo(() => {
+    const today = new Date();
+    const isToday = (dateString: string) => {
+      if (!dateString) return false;
+      const date = new Date(dateString);
+      return date.getDate() === today.getDate() &&
+             date.getMonth() === today.getMonth() &&
+             date.getFullYear() === today.getFullYear();
+    };
+
+    const busyIds = new Set<string>();
+    motorcycles.forEach(m => {
+      // A crew member is busy if their motorcycle is 'in-progress' AND was created today.
+      if (m.status === 'in-progress' && isToday(m.created_at)) {
+        m.crew?.forEach(crewId => busyIds.add(crewId));
+      }
+    });
+    return busyIds;
+  }, [motorcycles]);
 
   // Initialize service prices based on motorcycle size
   useEffect(() => {
@@ -266,9 +287,9 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
       newErrors.services = 'Please select at least one service or package.';
     }
 
-    // Validate crew if status is 'in-progress'
+    // Validate crew if status is 'in-progress' and no package selected
     if (formData.status === 'in-progress' && formData.crew.length === 0 && !hasPackageSelected) {
-      newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress".';
+      newErrors.crew = 'Assign at least one crew member for motorcycles "In Progress" when no package is selected.';
     }
 
     setErrors(newErrors);
@@ -293,11 +314,34 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
     try {
       const finalCost = isCostOverridden && manualTotalCost !== '' ? Number(manualTotalCost) : calculatedCost;
       
+      // --- ENHANCED CREW BUSY LOGIC ---
+      let statusToUse = formData.status;
+      
+      // If user wants 'in-progress' status, check if assigned crew are available
+      if (formData.status === 'in-progress') {
+        // If package is selected, allow in-progress without crew check
+        if (!hasPackageSelected) {
+          // Check if any assigned crew members are currently busy
+          const assignedCrewAreBusy = formData.crew.some(crewId => busyCrewIds.has(crewId));
+          
+          if (assignedCrewAreBusy) {
+            statusToUse = 'waiting';
+            setFormError('Some assigned crew members are currently busy. The motorcycle has been added to the waiting queue.');
+          } else if (formData.crew.length === 0) {
+            // No crew assigned but wants in-progress
+            statusToUse = 'waiting';
+            setFormError('No crew assigned. The motorcycle has been added to the waiting queue.');
+          }
+          // If assigned crew are available, keep 'in-progress' status
+        }
+        // If package is selected, proceed with in-progress status
+      }
+      
       const motorcycleData = {
         plate: sanitizeInput(formData.plate).toUpperCase(),
         model: sanitizeInput(formData.model),
         size: formData.size,
-        status: formData.status,
+        status: statusToUse,
         phone: sanitizeInput(formData.phone.trim()),
         crew: formData.crew,
         services: formData.selectedServices,
@@ -310,7 +354,7 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
 
       // Calculate queue number if status is waiting
       let queueNumber;
-      if (motorcycleData.status === 'waiting') {
+      if (statusToUse === 'waiting') {
         // Get all waiting motorcycles that aren't deleted
         const allMotorcycles = motorcycles || [];
         const waitingCount = allMotorcycles.filter((m: { status: string; is_deleted?: boolean }) => 
@@ -331,11 +375,11 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            status: motorcycleData.status,
+            status: statusToUse,
             plateNumber: motorcycleData.plate,
             serviceType,
             phoneNumber: motorcycleData.phone,
-            queueNumber: motorcycleData.status === 'waiting' ? queueNumber : undefined
+            queueNumber: statusToUse === 'waiting' ? queueNumber : undefined
           })
         });
       }

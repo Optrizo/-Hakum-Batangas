@@ -193,9 +193,9 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       newErrors.status = 'Please select a valid status';
     }
 
-    // Crew validation for "in-progress"
-    if (formData.status === 'in-progress' && (!formData.crew || formData.crew.length === 0)) {
-      newErrors.crew = 'Assign at least one crew member when status is "In Progress".';
+    // Crew validation for "in-progress" when no package is selected
+    if (formData.status === 'in-progress' && (!formData.crew || formData.crew.length === 0) && !hasPackageSelected) {
+      newErrors.crew = 'Assign at least one crew member when status is "In Progress" and no package is selected.';
     }
 
     // Service/Package selection validation
@@ -311,11 +311,27 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       // Remove cost validation check
       const finalCost = manualTotalCost !== '' ? Number(manualTotalCost) : totalCost;
         
-      // --- CREW BUSY LOGIC ---
+      // --- ENHANCED CREW BUSY LOGIC ---
       let statusToUse = formData.status;
-      if (allCrewBusy) {
-        statusToUse = 'waiting';
-        setFormError('All crew are currently busy. The car has been added to the waiting queue.');
+      
+      // If user wants 'in-progress' status, check if assigned crew are available
+      if (formData.status === 'in-progress') {
+        // If package is selected, allow in-progress without crew check
+        if (!hasPackageSelected) {
+          // Check if any assigned crew members are currently busy
+          const assignedCrewAreBusy = formData.crew.some(crewId => busyCrewIds.has(crewId));
+          
+          if (assignedCrewAreBusy) {
+            statusToUse = 'waiting';
+            setFormError('Some assigned crew members are currently busy. The car has been added to the waiting queue.');
+          } else if (formData.crew.length === 0) {
+            // No crew assigned but wants in-progress
+            statusToUse = 'waiting';
+            setFormError('No crew assigned. The car has been added to the waiting queue.');
+          }
+          // If assigned crew are available, keep 'in-progress' status
+        }
+        // If package is selected, proceed with in-progress status
       }
       await addCar({
         plate: formData.plate.toUpperCase().trim(),
@@ -664,7 +680,7 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
                 required
               >
                 <option value="waiting">Waiting</option>
-                <option value="in-progress" disabled={allCrewBusy}>In Progress</option>
+                <option value="in-progress">In Progress</option>
               </select>
               {errors.status && (
                 <p className="mt-1 text-xs text-red-500 flex items-start">
@@ -676,9 +692,6 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
               )}
               <p className="mt-1 text-xs text-text-secondary-light dark:text-text-secondary-dark">
                 Set status to 'In Progress' if service is starting immediately.
-                {allCrewBusy && (
-                  <span className="ml-2 font-semibold text-yellow-700 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/40 px-2 py-1 rounded">All crew are busy. Only 'Waiting' is available.</span>
-                )}
               </p>
             </div>
 

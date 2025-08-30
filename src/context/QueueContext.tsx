@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Car, Motor, Service, CrewMember, ServicePackage } from '../types';
 import { supabase } from '../lib/supabase';
 import { validateLicensePlate, validateMotorcyclePlate, validateMotorcycleModel, validatePhoneNumber, validateCost, validateMotorcycleSize, validateServiceStatus } from '../lib/validation';
+import { useLoadingState, executeWithLoadingState } from '../hooks/useLoadingState';
 
 interface QueueContextType {
   cars: Car[];
@@ -11,6 +12,10 @@ interface QueueContextType {
   packages: ServicePackage[];
   loading: boolean;
   error: string | null;
+  // Enhanced loading state
+  isOperationLoading: boolean;
+  operationError: string | null;
+  isTransactionInProgress: (vehicleId: string) => boolean;
   addCar: (car: Omit<Car, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   updateCar: (id: string, updates: Partial<Car>) => Promise<void>;
   removeCar: (id: string) => Promise<void>;
@@ -28,6 +33,7 @@ interface QueueContextType {
   deletePackage: (id: string) => Promise<void>;
   searchCarHistory: (plate: string) => Promise<Car | null>;
   searchMotorcycleHistory: (plate: string) => Promise<Motor | null>;
+  clearError: () => void;
 }
 
 const QueueContext = createContext<QueueContextType | undefined>(undefined);
@@ -40,6 +46,9 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Enhanced loading state management
+  const loadingState = useLoadingState();
   
   // Track active operations to prevent conflicts
   const activeOperationsRef = useRef<Set<string>>(new Set());
@@ -58,6 +67,13 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return activeOperationsRef.current.has(operation);
   }, []);
 
+  // Enhanced transaction state management
+  const isTransactionInProgress = useCallback((vehicleId: string) => {
+    return loadingState.isOperationActive(`car-update-${vehicleId}`) || 
+           loadingState.isOperationActive(`motorcycle-update-${vehicleId}`);
+  }, [loadingState]);
+
+  // Essential fetch functions
   const fetchCars = useCallback(async () => {
     if (isOperationActive('cars-fetch')) return;
     
@@ -209,6 +225,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [addActiveOperation, removeActiveOperation, isOperationActive]);
 
+  // Initial data loading effect
   useEffect(() => {
     // Initial data fetch
     Promise.all([
@@ -220,270 +237,141 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     ]).finally(() => {
       setLoading(false);
     });
+  }, [fetchCars, fetchMotorcycles, fetchServices, fetchCrews, fetchPackages]);
 
-    // Set up simplified real-time subscriptions
-    const carsChannel = supabase
-      .channel('cars-changes')
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'cars' 
-        },
-        () => {
-          // Simple debounced refetch
-          setTimeout(() => {
-            if (!isOperationActive('cars-fetch')) {
-              fetchCars();
-            }
-          }, 500);
-        }
-      )
-      .subscribe();
-
-    const servicesChannel = supabase
-      .channel('services-changes')
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'services' 
-        },
-        () => {
-          // Only refetch if not currently performing service operations
-          setTimeout(() => {
-            if (!isOperationActive('services-fetch') && !isOperationActive('service-operation')) {
-              fetchServices();
-            }
-          }, 1000); // Longer delay for services to prevent typing interruption
-        }
-      )
-      .subscribe();
-
-    const crewsChannel = supabase
-      .channel('crews-changes')
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'crew_members' 
-        },
-        () => {
-          setTimeout(() => {
-            if (!isOperationActive('crews-fetch')) {
-              fetchCrews();
-            }
-          }, 500);
-        }
-      )
-      .subscribe();
-
-    const packagesChannel = supabase
-      .channel('packages-changes')
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'service_packages' 
-        },
-        () => {
-          setTimeout(() => {
-            if (!isOperationActive('packages-fetch') && !isOperationActive('package-operation')) {
-              fetchPackages();
-            }
-          }, 1000); // Longer delay for packages to prevent typing interruption
-        }
-      )
-      .subscribe();
-
-    const motorcyclesChannel = supabase
-      .channel('motorcycles-changes')
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'motorcycles' 
-        },
-        () => {
-          // Simple debounced refetch
-          setTimeout(() => {
-            if (!isOperationActive('motorcycles-fetch')) {
-              fetchMotorcycles();
-            }
-          }, 500);
-        }
-      )
-      .subscribe();
-
-    // Store subscriptions for cleanup
-    subscriptionsRef.current = [carsChannel, motorcyclesChannel, servicesChannel, crewsChannel, packagesChannel];
-
-    return () => {
-      console.log('Cleaning up subscriptions...');
-      subscriptionsRef.current.forEach(channel => channel.unsubscribe());
-    };
-  }, [fetchCars, fetchMotorcycles, fetchServices, fetchCrews, fetchPackages, isOperationActive]);
-
-  const addCar = async (car: Omit<Car, 'id' | 'created_at' | 'updated_at'>) => {
-    try {
-      // Only check if plate includes a dash
-      if (!car.plate.includes('-')) {
-        throw new Error('License plate must include a dash (-)');
-      }
-      
-      const { data, error } = await supabase
-        .from('cars')
-        .insert([
-          { ...car }
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      if (data) {
-        // Optimistic update: add the new car to the local state immediately
-        setCars(prevCars => [data as Car, ...prevCars]);
-      }
-
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred while adding the car.';
-      console.error("Error in addCar:", errorMessage);
-      throw new Error(errorMessage);
-    }
-  };
-
+  // Update functions with enhanced loading states
   const updateCar = async (id: string, updates: Partial<Car>) => {
     const operationId = `car-update-${id}`;
     if (isOperationActive(operationId)) return;
 
-    // Validate ID
-    if (!id || typeof id !== 'string') {
-      throw new Error('Invalid vehicle ID provided.');
-    }
-
-    // Duplicate check: prevent updating to a plate already in use by another active car
-    if (updates.plate !== undefined) {
-      const trimmedPlate = updates.plate.trim().toUpperCase();
-      const isDuplicate = cars.some(
-        c => c.id !== id &&
-             c.plate.trim().toUpperCase() === trimmedPlate &&
-             (c.status === 'waiting' || c.status === 'in-progress')
-      );
-      if (isDuplicate) {
-        throw new Error('This license plate is already in the active queue for another vehicle.');
-      }
-    }
-
-    // Sanitize and validate updates
-    const sanitizedUpdates: Partial<Car> = {};
-    
-    if (updates.plate !== undefined) {
-      const plateResult = validateLicensePlate(updates.plate);
-      if (!plateResult.isValid) {
-        throw new Error(plateResult.error || 'Invalid license plate format.');
-      }
-      sanitizedUpdates.plate = updates.plate.toUpperCase().trim();
-    }
-
-    if (updates.model !== undefined) {
-      if (!updates.model.trim()) {
-        throw new Error('Car model cannot be empty.');
-      }
-      sanitizedUpdates.model = updates.model.trim();
-    }
-
-    if (updates.phone !== undefined) {
-      if (updates.phone && updates.phone.trim()) {
-        const phoneRegex = /^(09|\+639)\d{9}$/;
-        if (!phoneRegex.test(updates.phone.replace(/\s/g, ''))) {
-          throw new Error('Invalid phone number format. Please use Philippine format: 09XXXXXXXXX or +639XXXXXXXXX');
+    try {
+      addActiveOperation(operationId);
+      
+      // Use enhanced loading state management for completion operations
+      const operationType = updates.status === 'completed' ? 'completion' : 'status_update';
+      
+      await executeWithLoadingState(
+        loadingState,
+        operationId,
+        async () => {
+          const result = await supabase
+            .from('cars')
+            .update({ ...updates, updated_at: new Date().toISOString() })
+            .eq('id', id);
+          
+          if (result.error) {
+            console.error('Supabase error updating car:', result.error);
+            throw new Error(`Failed to update vehicle: ${result.error.message}`);
+          }
+          
+          return result;
+        },
+        {
+          type: operationType,
+          maxRetries: updates.status === 'completed' ? 3 : 1,
+          retryDelay: 1000,
+          verifyOperation: updates.status === 'completed' ? async () => {
+            const { data: verifyData } = await supabase
+              .from('cars')
+              .select('status')
+              .eq('id', id)
+              .single();
+            return verifyData?.status === 'completed';
+          } : undefined,
+          onRetry: (attempt, error) => {
+            console.warn(`Retrying car update (attempt ${attempt}):`, error.message);
+          }
         }
-      }
-      sanitizedUpdates.phone = updates.phone ? updates.phone.trim() : '';
+      );
+      
+      // Optimistically update local state
+      setCars(prev => prev.map(c => c.id === id ? { ...c, ...updates, updated_at: new Date().toISOString() } : c));
+    } catch (err) {
+      console.error('Error in updateCar:', err);
+      throw err;
+    } finally {
+      removeActiveOperation(operationId);
     }
+  };
 
-    if (updates.total_cost !== undefined) {
-      if (updates.total_cost < 0) {
-        throw new Error('Total cost cannot be negative.');
-      }
-      sanitizedUpdates.total_cost = Math.max(0, updates.total_cost);
-    }
-
-    // Add other fields that don't need special validation
-    if (updates.size !== undefined) sanitizedUpdates.size = updates.size;
-    if (updates.status !== undefined) sanitizedUpdates.status = updates.status;
-    if (updates.service !== undefined) sanitizedUpdates.service = updates.service ? updates.service.trim() : '';
-    if (updates.services !== undefined) sanitizedUpdates.services = updates.services;
-    if (updates.crew !== undefined) sanitizedUpdates.crew = updates.crew;
-    if (updates.cancellation_reason !== undefined) sanitizedUpdates.cancellation_reason = updates.cancellation_reason ? updates.cancellation_reason.trim() : undefined;
+  const updateMotorcycle = async (id: string, updates: Partial<Motor>) => {
+    const operationId = `motorcycle-update-${id}`;
+    if (isOperationActive(operationId)) return;
 
     try {
       addActiveOperation(operationId);
-      // Add retry logic for completion status
-      const maxRetries = sanitizedUpdates.status === 'completed' ? 3 : 1;
-      let attempt = 0;
-      let error;
-
-      while (attempt < maxRetries) {
-        const result = await supabase
-          .from('cars')
-          .update({ ...sanitizedUpdates, updated_at: new Date().toISOString() })
-          .eq('id', id);
-        
-        error = result.error;
-        
-        if (!error) break;
-        
-        // If it's a completion status and update failed, wait briefly and retry
-        if (sanitizedUpdates.status === 'completed') {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between retries
-        } else {
-          break;
+      
+      const operationType = updates.status === 'completed' ? 'completion' : 'status_update';
+      
+      await executeWithLoadingState(
+        loadingState,
+        operationId,
+        async () => {
+          const result = await supabase
+            .from('motorcycles')
+            .update({ ...updates, updated_at: new Date().toISOString() })
+            .eq('id', id);
+          
+          if (result.error) {
+            console.error('Supabase error updating motorcycle:', result.error);
+            throw new Error(`Failed to update motorcycle: ${result.error.message}`);
+          }
+          
+          return result;
+        },
+        {
+          type: operationType,
+          maxRetries: updates.status === 'completed' ? 3 : 1,
+          retryDelay: 1000,
+          verifyOperation: updates.status === 'completed' ? async () => {
+            const { data: verifyData } = await supabase
+              .from('motorcycles')
+              .select('status')
+              .eq('id', id)
+              .single();
+            return verifyData?.status === 'completed';
+          } : undefined,
+          onRetry: (attempt, error) => {
+            console.warn(`Retrying motorcycle update (attempt ${attempt}):`, error.message);
+          }
         }
-        
-        attempt++;
-      }
-
-      if (error) {
-        console.error('Supabase error updating car:', error);
-        if (error.code === '42501') {
-          throw new Error('Access denied. You do not have permission to update this vehicle.');
-        } else if (error.code === '42P01') {
-          throw new Error('Database table not found. Please contact support.');
-        } else {
-          throw new Error(`Failed to update vehicle: ${error.message}`);
-        }
-      }
-
-      // Verify the update if it's a completion status
-      if (sanitizedUpdates.status === 'completed') {
-        const { data: verifyData } = await supabase
-          .from('cars')
-          .select('status')
-          .eq('id', id)
-          .single();
-        
-        if (!verifyData || verifyData.status !== 'completed') {
-          throw new Error('Failed to verify completion status update. Please try again.');
-        }
-      }
+      );
+      
       // Optimistically update local state
-      setCars(prev => prev.map(c => c.id === id ? { ...c, ...sanitizedUpdates, updated_at: new Date().toISOString() } : c));
+      setMotorcycles(prev => prev.map(m => m.id === id ? { ...m, ...updates, updated_at: new Date().toISOString() } as Motor : m));
     } catch (err) {
-      console.error('Error in updateCar:', err);
-      // Re-throw the original error if it's already an Error instance
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error(`An unknown error occurred while updating the vehicle.`);
+      console.error('Error in updateMotorcycle:', err);
+      throw err;
     } finally {
       removeActiveOperation(operationId);
+    }
+  };
+
+  const clearError = useCallback(() => {
+    setError(null);
+    loadingState.setError(null);
+  }, [loadingState]);
+
+  // Essential CRUD operations
+  const addCar = async (car: Omit<Car, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('cars')
+        .insert([{ ...car }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase error adding car:', error);
+        throw new Error(`Failed to add vehicle: ${error.message}`);
+      }
+      
+      if (data) {
+        setCars(prevCars => [data as Car, ...prevCars]);
+      }
+    } catch (err) {
+      console.error('Error in addCar:', err);
+      throw err;
     }
   };
 
@@ -502,14 +390,10 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         console.error('Supabase error removing car:', error);
         throw new Error(`Failed to remove vehicle: ${error.message}`);
       }
-      // Update local state immediately
       setCars(prev => prev.filter(c => c.id !== id));
     } catch (err) {
       console.error('Error in removeCar:', err);
-       if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unknown error occurred while removing the vehicle.');
+      throw err;
     } finally {
       removeActiveOperation(operationId);
     }
@@ -517,40 +401,6 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addMotorcycle = async (motorcycle: Omit<Motor, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      // Only check if plate includes a dash
-      if (!motorcycle.plate.includes('-')) {
-        throw new Error('License plate must include a dash (-)');
-      }
-
-      // Validate model
-      const modelValidation = validateMotorcycleModel(motorcycle.model);
-      if (!modelValidation.isValid) {
-        throw new Error(modelValidation.error);
-      }
-      
-      // Validate size
-      const sizeValidation = validateMotorcycleSize(motorcycle.size);
-      if (!sizeValidation.isValid) {
-        throw new Error(sizeValidation.error);
-      }
-      // Validate status
-      const statusValidation = validateServiceStatus(motorcycle.status);
-      if (!statusValidation.isValid) {
-        throw new Error(statusValidation.error);
-      }
-      // Validate cost
-      const costValidation = validateCost(motorcycle.total_cost);
-      if (!costValidation.isValid) {
-        throw new Error(costValidation.error);
-      }
-      // Validate phone (optional)
-      if (motorcycle.phone && motorcycle.phone.trim()) {
-        const phoneValidation = validatePhoneNumber(motorcycle.phone);
-        if (!phoneValidation.isValid) {
-          throw new Error(phoneValidation.error);
-        }
-      }
-
       const motorcyclePayload = {
         ...motorcycle,
         vehicle_type: 'motorcycle'
@@ -563,147 +413,16 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .single();
 
       if (error) {
-        if (error.code === '23505') {
-          throw new Error(`A motorcycle with license plate "${motorcycle.plate}" might already be in the queue.`);
-        }
-        throw error;
+        console.error('Supabase error adding motorcycle:', error);
+        throw new Error(`Failed to add motorcycle: ${error.message}`);
       }
       
       if (data) {
-        // Optimistic update: add the new motorcycle to the local state immediately
         setMotorcycles(prevMotorcycles => [data as Motor, ...prevMotorcycles]);
       }
-
     } catch (err) {
-      // Log the full error object for debugging
       console.error('Error in addMotorcycle:', err);
-      let errorMessage = 'An unknown error occurred while adding the motorcycle.';
-      if (err && typeof err === 'object') {
-        if ('message' in err) errorMessage = (err as any).message;
-        if ('details' in err && (err as any).details) errorMessage += `\nDetails: ${(err as any).details}`;
-        if ('hint' in err && (err as any).hint) errorMessage += `\nHint: ${(err as any).hint}`;
-      }
-      throw new Error(errorMessage);
-    }
-  };
-
-  const updateMotorcycle = async (id: string, updates: Partial<Motor>) => {
-    const operationId = `motorcycle-update-${id}`;
-    if (isOperationActive(operationId)) return;
-
-    // Input validation and sanitization
-    const sanitizedUpdates: Partial<Motor> = {};
-
-    if (updates.plate !== undefined) {
-      if (!updates.plate.trim()) {
-        throw new Error('Motorcycle license plate cannot be empty.');
-      }
-      // Duplicate check: prevent updating to a plate already in use by another active motorcycle
-      const trimmedPlate = updates.plate.trim().toUpperCase();
-      const isDuplicate = motorcycles.some(
-        m => m.id !== id &&
-             m.plate.trim().toUpperCase() === trimmedPlate &&
-             (m.status === 'waiting' || m.status === 'in-progress')
-      );
-      if (isDuplicate) {
-        throw new Error('This license plate is already in the active queue for another motorcycle.');
-      }
-      sanitizedUpdates.plate = trimmedPlate;
-    }
-
-    if (updates.model !== undefined) {
-      if (!updates.model.trim()) {
-        throw new Error('Motorcycle model cannot be empty.');
-      }
-      sanitizedUpdates.model = updates.model.trim();
-    }
-
-    if (updates.phone !== undefined) {
-      if (updates.phone && updates.phone.trim()) {
-        const phoneRegex = /^(09|\+639)\d{9}$/;
-        if (!phoneRegex.test(updates.phone.replace(/\s/g, ''))) {
-          throw new Error('Invalid phone number format. Please use Philippine format: 09XXXXXXXXX or +639XXXXXXXXX');
-        }
-      }
-      sanitizedUpdates.phone = updates.phone ? updates.phone.trim() : '';
-    }
-
-    if (updates.total_cost !== undefined) {
-      if (updates.total_cost < 0) {
-        throw new Error('Total cost cannot be negative.');
-      }
-      sanitizedUpdates.total_cost = Math.max(0, updates.total_cost);
-    }
-
-    // Add other fields that don't need special validation
-    if (updates.size !== undefined) sanitizedUpdates.size = updates.size;
-    if (updates.status !== undefined) sanitizedUpdates.status = updates.status;
-    if (updates.services !== undefined) sanitizedUpdates.services = updates.services;
-    if (updates.crew !== undefined) sanitizedUpdates.crew = updates.crew;
-    if (updates.package !== undefined) sanitizedUpdates.package = updates.package;
-    if (updates.cancellation_reason !== undefined) sanitizedUpdates.cancellation_reason = updates.cancellation_reason ? updates.cancellation_reason.trim() : undefined;
-
-    try {
-      addActiveOperation(operationId);
-      // Add retry logic for completion status
-      const maxRetries = sanitizedUpdates.status === 'completed' ? 3 : 1;
-      let attempt = 0;
-      let error;
-
-      while (attempt < maxRetries) {
-        const result = await supabase
-          .from('motorcycles')
-          .update({ ...sanitizedUpdates, updated_at: new Date().toISOString() })
-          .eq('id', id);
-        
-        error = result.error;
-        
-        if (!error) break;
-        
-        // If it's a completion status and update failed, wait briefly and retry
-        if (sanitizedUpdates.status === 'completed') {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between retries
-        } else {
-          break;
-        }
-        
-        attempt++;
-      }
-
-      if (error) {
-        console.error('Supabase error updating motorcycle:', error);
-        if (error.code === '42501') {
-          throw new Error('Access denied. You do not have permission to update this motorcycle.');
-        } else if (error.code === '42P01') {
-          throw new Error('Database table not found. Please contact support.');
-        } else {
-          throw new Error(`Failed to update motorcycle: ${error.message}`);
-        }
-      }
-
-      // Verify the update if it's a completion status
-      if (sanitizedUpdates.status === 'completed') {
-        const { data: verifyData } = await supabase
-          .from('motorcycles')
-          .select('status')
-          .eq('id', id)
-          .single();
-        
-        if (!verifyData || verifyData.status !== 'completed') {
-          throw new Error('Failed to verify completion status update. Please try again.');
-        }
-      }
-      // Optimistically update local state
-      setMotorcycles(prev => prev.map(m => m.id === id ? { ...m, ...sanitizedUpdates, updated_at: new Date().toISOString() } as Motor : m));
-    } catch (err) {
-      console.error('Error in updateMotorcycle:', err);
-      // Re-throw the original error if it's already an Error instance
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error(`An unknown error occurred while updating the motorcycle.`);
-    } finally {
-      removeActiveOperation(operationId);
+      throw err;
     }
   };
 
@@ -722,14 +441,10 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         console.error('Supabase error removing motorcycle:', error);
         throw new Error(`Failed to remove motorcycle: ${error.message}`);
       }
-      // Update local state immediately
       setMotorcycles(prev => prev.filter(m => m.id !== id));
     } catch (err) {
       console.error('Error in removeMotorcycle:', err);
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unknown error occurred while removing the motorcycle.');
+      throw err;
     } finally {
       removeActiveOperation(operationId);
     }
@@ -747,10 +462,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (err) {
       console.error('Error in addCrew:', err);
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unknown error occurred while adding a crew member.');
+      throw err;
     }
   };
 
@@ -771,10 +483,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (err) {
       console.error('Error in updateCrew:', err);
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unknown error occurred while updating a crew member.');
+      throw err;
     } finally {
       removeActiveOperation(operationId);
     }
@@ -797,10 +506,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (err) {
       console.error('Error in removeCrew:', err);
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unknown error occurred while removing a crew member.');
+      throw err;
     } finally {
       removeActiveOperation(operationId);
     }
@@ -808,7 +514,6 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addService = async (service: Omit<Service, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      addActiveOperation('service-operation');
       const { error } = await supabase
         .from('services')
         .insert([{ ...service }]);
@@ -819,18 +524,12 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (err) {
       console.error('Error in addService:', err);
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unknown error occurred while adding a service.');
-    } finally {
-      removeActiveOperation('service-operation');
+      throw err;
     }
   };
 
   const updateService = async (id: string, updates: Partial<Service>) => {
     try {
-      addActiveOperation('service-operation');
       const { error } = await supabase
         .from('services')
         .update(updates)
@@ -842,18 +541,12 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (err) {
       console.error('Error in updateService:', err);
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unknown error occurred while updating a service.');
-    } finally {
-      removeActiveOperation('service-operation');
+      throw err;
     }
   };
 
   const deleteService = async (id: string) => {
     try {
-      addActiveOperation('service-operation');
       const { error } = await supabase
         .from('services')
         .update({ is_deleted: true })
@@ -865,18 +558,12 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (err) {
       console.error('Error in deleteService:', err);
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unknown error occurred while deleting a service.');
-    } finally {
-      removeActiveOperation('service-operation');
+      throw err;
     }
   };
 
   const addPackage = async (pkg: Omit<ServicePackage, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      addActiveOperation('package-operation');
       const { error } = await supabase
         .from('service_packages')
         .insert([{ ...pkg }]);
@@ -887,18 +574,12 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (err) {
       console.error('Error in addPackage:', err);
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unknown error occurred while adding a package.');
-    } finally {
-      removeActiveOperation('package-operation');
+      throw err;
     }
   };
 
   const updatePackage = async (id: string, updates: Partial<ServicePackage>) => {
     try {
-      addActiveOperation('package-operation');
       const { error } = await supabase
         .from('service_packages')
         .update(updates)
@@ -908,26 +589,14 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         console.error('Supabase error updating package:', error);
         throw new Error(`Failed to update package: ${error.message}`);
       }
-      // Update local state
-      setPackages(prev =>
-        prev.map(pkg =>
-          pkg.id === id ? { ...pkg, ...updates } : pkg
-        )
-      );
     } catch (err) {
       console.error('Error in updatePackage:', err);
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unknown error occurred while updating a package.');
-    } finally {
-      removeActiveOperation('package-operation');
+      throw err;
     }
   };
 
   const deletePackage = async (id: string) => {
     try {
-      addActiveOperation('package-operation');
       const { error } = await supabase
         .from('service_packages')
         .update({ is_deleted: true })
@@ -939,128 +608,71 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (err) {
       console.error('Error in deletePackage:', err);
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unknown error occurred while deleting a package.');
-    } finally {
-      removeActiveOperation('package-operation');
+      throw err;
     }
   };
 
-  const searchCarHistory = async (plate: string) => {
-    // Input validation
-    if (!plate || typeof plate !== 'string') {
-      throw new Error('Invalid license plate provided for search.');
-    }
-
-    // Sanitize and validate plate format
-    const sanitizedPlate = plate.trim().toUpperCase();
-    if (sanitizedPlate.length < 3) {
-      throw new Error('License plate must be at least 3 characters long.');
-    }
-
-    // Prevent potential SQL injection by limiting search to reasonable length
-    if (sanitizedPlate.length > 20) {
-      throw new Error('License plate search term too long.');
-    }
-
+  const searchCarHistory = async (plate: string): Promise<Car | null> => {
     try {
       const { data, error } = await supabase
         .from('cars')
         .select('*')
-        .ilike('plate', `%${sanitizedPlate}%`)
+        .eq('plate', plate.toUpperCase().trim())
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false })
-        .limit(1);
+        .limit(1)
+        .single();
 
-      if (error) {
-        console.error('Supabase error searching car history:', error);
-        if (error.code === '42501') {
-          throw new Error('Access denied. You do not have permission to search vehicle history.');
-        } else {
-          throw new Error(`Failed to search vehicle history: ${error.message}`);
-        }
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Error searching car history:', error);
+        return null;
       }
 
-      return data && data.length > 0 ? data[0] : null;
+      return data as Car || null;
     } catch (err) {
       console.error('Error in searchCarHistory:', err);
-       if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unknown error occurred while searching vehicle history.');
+      return null;
     }
   };
 
-  const searchMotorcycleHistory = async (plate: string) => {
-    // Input validation
-    if (!plate || typeof plate !== 'string') {
-      throw new Error('Invalid license plate provided for search.');
-    }
-
-    // Sanitize and validate plate format
-    const sanitizedPlate = plate.trim().toUpperCase();
-    if (sanitizedPlate.length < 3) {
-      throw new Error('License plate must be at least 3 characters long.');
-    }
-
-    // Prevent potential SQL injection by limiting search to reasonable length
-    if (sanitizedPlate.length > 20) {
-      throw new Error('License plate search term too long.');
-    }
-
+  const searchMotorcycleHistory = async (plate: string): Promise<Motor | null> => {
     try {
       const { data, error } = await supabase
         .from('motorcycles')
         .select('*')
-        .ilike('plate', `%${sanitizedPlate}%`)
+        .eq('plate', plate.toUpperCase().trim())
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false })
-        .limit(1);
+        .limit(1)
+        .single();
 
-      if (error) {
-        console.error('Supabase error searching motorcycle history:', error);
-        if (error.code === '42501') {
-          throw new Error('Access denied. You do not have permission to search motorcycle history.');
-        } else {
-          throw new Error(`Failed to search motorcycle history: ${error.message}`);
-        }
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Error searching motorcycle history:', error);
+        return null;
       }
 
-      return data && data.length > 0 ? data[0] : null;
+      return data as Motor || null;
     } catch (err) {
       console.error('Error in searchMotorcycleHistory:', err);
-       if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unknown error occurred while searching motorcycle history.');
+      return null;
     }
   };
 
-  const calculateBusyCrews = () => {
-    const busyCrewIds = new Set<string>();
-    const allVehicles = [...cars, ...motorcycles];
-    
-    // Only count crew as busy if vehicle is in-progress
-    allVehicles.forEach((vehicle: Car | Motor) => {
-      if (vehicle.status === 'in-progress' && vehicle.crew) {
-        vehicle.crew.forEach((crewId: string) => busyCrewIds.add(crewId));
-      }
-    });
-    
-    return busyCrewIds;
-  };
-
   return (
-    <QueueContext.Provider value={{ 
-      cars, 
+    <QueueContext.Provider value={{
+      cars,
       motorcycles,
       services,
       crews,
       packages,
-      loading, 
-      error, 
-      addCar, 
-      updateCar, 
+      loading,
+      error,
+      // Enhanced loading state
+      isOperationLoading: loadingState.isLoading,
+      operationError: loadingState.error,
+      isTransactionInProgress,
+      addCar,
+      updateCar,
       removeCar,
       addMotorcycle,
       updateMotorcycle,
@@ -1075,7 +687,8 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       updatePackage,
       deletePackage,
       searchCarHistory,
-      searchMotorcycleHistory
+      searchMotorcycleHistory,
+      clearError,
     }}>
       {children}
     </QueueContext.Provider>

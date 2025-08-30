@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useQueue } from '../context/QueueContext';
 import { Car, Motor, ServiceStatus } from '../types';
 import StatusBadge from './StatusBadge';
+import LoadingSpinner from './LoadingSpinner';
 import { Edit2, Check, X, DollarSign, CheckCircle, Wrench as Tool, Users, XCircle, ChevronDown } from 'lucide-react';
 import EditCarForm from './EditCarForm';
 import EditMotorcycleForm from './EditMotorcycleForm';
@@ -16,7 +17,7 @@ interface QueueItemProps {
 }
 
 const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, queuePosition }) => {
-  const { updateCar, updateMotorcycle, removeCar, removeMotorcycle, crews, cars, motorcycles, packages, services } = useQueue();
+  const { updateCar, updateMotorcycle, removeCar, removeMotorcycle, crews, cars, motorcycles, packages, services, isTransactionInProgress } = useQueue();
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
@@ -28,6 +29,7 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
   const [isDeleting, setIsDeleting] = useState(false);
 
   const isMotorcycle = 'vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle';
+  const isTransactionLoading = isTransactionInProgress(vehicle.id);
 
   const hasPackage = useMemo(() => {
     if (isMotorcycle) {
@@ -571,11 +573,15 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
                 {getValidActions().includes('in-progress') && vehicle.status === 'waiting' && (
                   <button
                     onClick={handleStartServiceClick}
-                    disabled={isUpdating}
+                    disabled={isUpdating || isTransactionLoading}
                     className="inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-sm font-semibold bg-brand-blue text-white hover:bg-brand-dark-blue transition-all duration-200 disabled:opacity-50 transform hover:scale-105 active:scale-95"
                   >
-                    <Tool className="h-4 w-4 mr-2" />
-                    Start Service
+                    {isUpdating || isTransactionLoading ? (
+                      <LoadingSpinner size="sm" className="mr-2" />
+                    ) : (
+                      <Tool className="h-4 w-4 mr-2" />
+                    )}
+                    {isUpdating || isTransactionLoading ? 'Starting...' : 'Start Service'}
                   </button>
                 )}
                 {getValidActions().includes('payment-pending') && vehicle.status === 'in-progress' && (
@@ -591,11 +597,15 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
                 {getValidActions().includes('completed') && vehicle.status === 'payment-pending' && (
                   <button
                     onClick={() => handleQuickAction('completed')}
-                    disabled={isUpdating}
+                    disabled={isUpdating || isTransactionLoading}
                     className="inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-sm font-semibold bg-green-500 text-white hover:bg-green-600 transition-all duration-200 disabled:opacity-50 transform hover:scale-105 active:scale-95"
                   >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Mark as Completed
+                    {isUpdating || isTransactionLoading ? (
+                      <LoadingSpinner size="sm" variant="completion" className="mr-2" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                    )}
+                    {isUpdating || isTransactionLoading ? 'Completing...' : 'Mark as Completed'}
                   </button>
                 )}
                 {getValidActions().includes('waiting') && (vehicle.status === 'in-progress' || vehicle.status === 'payment-pending') && (
