@@ -73,6 +73,49 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
     return () => window.removeEventListener('resize', checkSize);
   }, []);
 
+  // Helper function to get relevant timestamps for display
+  const getTimestampSections = () => {
+    const timestampSections = [];
+    
+    // Always show "Added" (created_at)
+    timestampSections.push({
+      label: 'Added',
+      timestamp: vehicle.created_at,
+      isPrimary: true
+    });
+    
+    // Show "Time Waiting" if the vehicle has been in waiting status
+    if (vehicle.time_waiting) {
+      timestampSections.push({
+        label: 'Time Waiting',
+        timestamp: vehicle.time_waiting,
+        isPrimary: false
+      });
+    }
+    
+    // Show "Time Started" (in-progress) if the vehicle has been in progress
+    if (vehicle.time_in_progress) {
+      timestampSections.push({
+        label: 'Time Started',
+        timestamp: vehicle.time_in_progress,
+        isPrimary: false
+      });
+    }
+    
+    // Show "Ready For Payment" if the vehicle has been in payment-pending status
+    if (vehicle.time_ready_for_payment) {
+      timestampSections.push({
+        label: 'Ready For Payment', 
+        timestamp: vehicle.time_ready_for_payment,
+        isPrimary: false
+      });
+    }
+    
+    // Note: "Completed" timestamp (completed_at) is kept in database but hidden from UI display
+    
+    return timestampSections;
+  };
+
   // Helper to resolve service/package names for motorcycles
   const getServiceBadges = (vehicle: Car | Motor) => {
     if ('vehicle_type' in vehicle && vehicle.vehicle_type === 'motorcycle') {
@@ -476,12 +519,26 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
                 <h4 className="text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider mb-1">Total Cost</h4>
                 <p className="text-base font-bold text-green-500 dark:text-green-400">₱{(vehicle.total_cost || 0).toLocaleString()}</p>
           </div>
-              <div className="lg:col-span-2">
-                <h4 className="text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider mb-1">Added</h4>
-                <p className="text-text-primary-light dark:text-text-primary-dark">
-                  {new Date(vehicle.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
-            </p>
-          </div>
+              {/* Dynamic Timestamp Sections */}
+              {getTimestampSections().map((section, index) => (
+                <div key={section.label} className={section.isPrimary ? "lg:col-span-2" : "col-span-1"}>
+                  <h4 className="text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider mb-1">
+                    {section.label}
+                  </h4>
+                  <p className={`text-text-primary-light dark:text-text-primary-dark ${
+                    section.label === 'Completed' ? 'font-semibold text-green-600 dark:text-green-400' : ''
+                  }`}>
+                    {new Date(section.timestamp).toLocaleString(undefined, { 
+                      month: 'short', 
+                      day: 'numeric', 
+                      year: 'numeric', 
+                      hour: '2-digit', 
+                      minute: '2-digit', 
+                      hour12: true 
+                    })}
+                  </p>
+                </div>
+              ))}
         </div>
 
             <div className="mb-3 sm:mb-4">

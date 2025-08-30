@@ -65,6 +65,10 @@ export interface Car {
   completed_at?: string;
   cancellation_reason?: string;
   is_deleted?: boolean;
+  // Status timestamps
+  time_waiting?: string;
+  time_in_progress?: string;
+  time_ready_for_payment?: string;
 }
 
 export interface Motor {
@@ -84,6 +88,10 @@ export interface Motor {
   completed_at?: string;
   cancellation_reason?: string;
   is_deleted?: boolean;
+  // Status timestamps
+  time_waiting?: string;
+  time_in_progress?: string;
+  time_ready_for_payment?: string;
 }
 
 export const CAR_SIZES: { label: string; value: CarSize }[] = [

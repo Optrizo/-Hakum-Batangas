@@ -26,6 +26,9 @@ export interface Database {
           total_cost: number | null
           services: string[] | null
           is_deleted: boolean | null
+          time_waiting: string | null
+          time_in_progress: string | null
+          time_ready_for_payment: string | null
         }
         Insert: {
           id?: string
@@ -43,6 +46,9 @@ export interface Database {
           total_cost?: number | null
           services?: string[] | null
           is_deleted?: boolean | null
+          time_waiting?: string | null
+          time_in_progress?: string | null
+          time_ready_for_payment?: string | null
         }
         Update: {
           id?: string
@@ -60,6 +66,9 @@ export interface Database {
           total_cost?: number | null
           services?: string[] | null
           is_deleted?: boolean | null
+          time_waiting?: string | null
+          time_in_progress?: string | null
+          time_ready_for_payment?: string | null
         }
       }
       motorcycles: {
@@ -80,6 +89,9 @@ export interface Database {
           package: string | null
           vehicle_type: string
           is_deleted: boolean | null
+          time_waiting: string | null
+          time_in_progress: string | null
+          time_ready_for_payment: string | null
         }
         Insert: {
           id?: string
@@ -98,6 +110,9 @@ export interface Database {
           package?: string | null
           vehicle_type?: string
           is_deleted?: boolean | null
+          time_waiting?: string | null
+          time_in_progress?: string | null
+          time_ready_for_payment?: string | null
         }
         Update: {
           id?: string
@@ -116,6 +131,9 @@ export interface Database {
           package?: string | null
           vehicle_type?: string
           is_deleted?: boolean | null
+          time_waiting?: string | null
+          time_in_progress?: string | null
+          time_ready_for_payment?: string | null
         }
       }
       services: {
