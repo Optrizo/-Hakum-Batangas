@@ -5,6 +5,16 @@ import { Clock, Wrench, Zap } from 'lucide-react';
 import HakumLogoBlue from '/Hakum V2 (Blue).png';
 import { useLocation, Navigate } from 'react-router-dom';
 
+// Utility function to check if a date is today
+const isToday = (dateString: string): boolean => {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  const today = new Date();
+  return date.getDate() === today.getDate() &&
+         date.getMonth() === today.getMonth() &&
+         date.getFullYear() === today.getFullYear();
+};
+
 const MobileView: React.FC = () => {
   const location = useLocation();
   // Mobile kiosk mode: if not on /mobile, redirect to /mobile
@@ -32,12 +42,19 @@ const MobileView: React.FC = () => {
     };
   }, []);
 
-  // Get counts for waiting and in-progress vehicles only
+  // Get counts for waiting and in-progress vehicles only (today's vehicles only)
   const vehicleCounts = useMemo(() => {
     const allVehicles = [...cars, ...motorcycles];
-    const activeVehicles = allVehicles.filter(v => 
-      (v.status === 'waiting' || v.status === 'in-progress') && 
-      !v.is_deleted
+    
+    // Filter for today's vehicles only
+    const todaysVehicles = allVehicles.filter(v => {
+      const isTodayVehicle = isToday(v.created_at);
+      const isNotDeleted = !v.is_deleted;
+      return isTodayVehicle && isNotDeleted;
+    });
+    
+    const activeVehicles = todaysVehicles.filter(v => 
+      v.status === 'waiting' || v.status === 'in-progress'
     );
 
     return {
@@ -89,7 +106,7 @@ const MobileView: React.FC = () => {
               HAKUM AUTO CARE
             </h1>
             <div className="text-blue-300 font-bold text-lg tracking-wide">
-              LIVE QUEUE
+              TODAY'S LIVE QUEUE
             </div>
           </div>
           

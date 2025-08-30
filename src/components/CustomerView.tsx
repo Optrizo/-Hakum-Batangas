@@ -16,8 +16,6 @@ const CustomerView: React.FC = () => {
   const { cars, motorcycles, services, packages, crews, loading } = useQueue();
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  console.log('CustomerView debug:', { loading, cars: cars.length, motorcycles: motorcycles.length });
-
   useEffect(() => {
     // Update every second
     const timer = setInterval(() => {
@@ -45,17 +43,31 @@ const CustomerView: React.FC = () => {
 
   const activeVehicles = useMemo(() => {
     const combined = [...cars, ...motorcycles];
-    // Only hide vehicles if status is completed or cancelled, regardless of day
-    return combined
-      .filter(v => v.status !== 'completed' && v.status !== 'cancelled')
+    console.log('All vehicles before filtering:', combined.map(v => ({ plate: v.plate, status: v.status, created_at: v.created_at.substring(0, 10) })));
+    
+    // Show all vehicles regardless of date - only hide if completed, cancelled, or deleted
+    const filtered = combined
+      .filter(v => {
+        const isActiveStatus = v.status !== 'completed' && v.status !== 'cancelled';
+        const isNotDeleted = !v.is_deleted;
+        
+        return isActiveStatus && isNotDeleted;
+      })
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    
+    console.log('Active vehicles after filtering:', filtered.map(v => ({ plate: v.plate, status: v.status })));
+    return filtered;
   }, [cars, motorcycles]);
 
-  const columns = useMemo(() => [
-    { title: 'WAITING IN QUEUE', vehicles: activeVehicles.filter(v => v.status === 'waiting'), color: '#3b82f6' },
-    { title: 'IN PROGRESS', vehicles: activeVehicles.filter(v => v.status === 'in-progress'), color: '#2dd4bf' },
-    { title: 'READY FOR PAYMENT', vehicles: activeVehicles.filter(v => v.status === 'payment-pending'), color: '#f59e0b' },
-  ], [activeVehicles]);
+  const columns = useMemo(() => {
+    const cols = [
+      { title: 'WAITING IN QUEUE', vehicles: activeVehicles.filter(v => v.status === 'waiting'), color: '#3b82f6' },
+      { title: 'IN PROGRESS', vehicles: activeVehicles.filter(v => v.status === 'in-progress'), color: '#2dd4bf' },
+      { title: 'READY FOR PAYMENT', vehicles: activeVehicles.filter(v => v.status === 'payment-pending'), color: '#f59e0b' },
+    ];
+    
+    return cols;
+  }, [activeVehicles]);
 
   // Dynamically adjust sizes based on vehicle count and column split
   const getSizeClasses = (count: number, isSplitIntoColumns: boolean = false) => {
@@ -211,7 +223,6 @@ const CustomerView: React.FC = () => {
     return (
       <div className={`${bgMain} h-screen w-screen flex items-center justify-center`}>
         <h1 className="text-4xl text-blue-400 font-bold">Loading Queue...</h1>
-        <div style={{color: 'red'}}>DEBUG: Loading...</div>
       </div>
     );
   }
@@ -241,7 +252,7 @@ const CustomerView: React.FC = () => {
           </h1>
         </div>
         <div className="text-right">
-          <p className={`text-xl font-bold ${textHeader}`}>LIVE QUEUE</p>
+          <p className={`text-xl font-bold ${textHeader}`}>TODAY'S LIVE QUEUE</p>
           <p className={`${textSecondary} text-xs`}>
             {currentTime.toLocaleDateString('en-US', { 
               weekday: 'long', 
