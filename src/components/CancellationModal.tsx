@@ -19,6 +19,8 @@ const CancellationModal: React.FC<CancellationModalProps> = ({
 }) => {
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
+  const [showOthersField, setShowOthersField] = useState(false);
+  const [othersReason, setOthersReason] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Reset state when modal opens/closes
@@ -26,6 +28,8 @@ const CancellationModal: React.FC<CancellationModalProps> = ({
     if (isOpen) {
       setReason('');
       setError('');
+      setShowOthersField(false);
+      setOthersReason('');
       // Focus the textarea after a brief delay to ensure modal is rendered
       setTimeout(() => {
         textareaRef.current?.focus();
@@ -36,24 +40,30 @@ const CancellationModal: React.FC<CancellationModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const trimmedReason = reason.trim();
-    if (!trimmedReason) {
+    let finalReason = reason.trim();
+    
+    // If "Others" was selected, use the custom reason from the text field
+    if (showOthersField && othersReason.trim()) {
+      finalReason = othersReason.trim();
+    }
+    
+    if (!finalReason) {
       setError('Cancellation reason is required');
       return;
     }
     
-    if (trimmedReason.length < 3) {
+    if (finalReason.length < 3) {
       setError('Cancellation reason must be at least 3 characters long');
       return;
     }
     
-    if (trimmedReason.length > 500) {
+    if (finalReason.length > 500) {
       setError('Cancellation reason must be less than 500 characters');
       return;
     }
     
     setError('');
-    onConfirm(trimmedReason);
+    onConfirm(finalReason);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -67,15 +77,29 @@ const CancellationModal: React.FC<CancellationModalProps> = ({
     }
   };
 
+  const handleQuickReasonClick = (selectedReason: string) => {
+    if (selectedReason === 'Others') {
+      setShowOthersField(true);
+      setReason('');
+      setOthersReason('');
+      // Focus on the "Others" text field after a brief delay
+      setTimeout(() => {
+        const othersInput = document.getElementById('others-reason') as HTMLTextAreaElement;
+        othersInput?.focus();
+      }, 100);
+    } else {
+      setShowOthersField(false);
+      setReason(selectedReason);
+      setOthersReason('');
+    }
+    if (error) setError('');
+  };
+
   const commonReasons = [
-    'Customer requested cancellation',
-    'Vehicle not available',
-    'Service not available',
-    'Customer no-show',
-    'Payment issues',
-    'Schedule conflict',
-    'Technical problems',
-    'Customer changed mind'
+    "Customer can't wait any longer",
+    "Customer doesn't want the service anymore",
+    "Customer needs to be somewhere",
+    "Others"
   ];
 
   if (!isOpen) return null;
@@ -132,26 +156,44 @@ const CancellationModal: React.FC<CancellationModalProps> = ({
                 Reason for cancellation <span className="text-red-500">*</span>
               </label>
               
-              <textarea
-                ref={textareaRef}
-                id="cancellation-reason"
-                value={reason}
-                onChange={(e) => {
-                  setReason(e.target.value);
-                  if (error) setError('');
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder="Please provide a reason for cancelling this service..."
-                className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
-                rows={3}
-                maxLength={500}
-                disabled={isLoading}
-                required
-              />
+              {!showOthersField ? (
+                <textarea
+                  ref={textareaRef}
+                  id="cancellation-reason"
+                  value={reason}
+                  onChange={(e) => {
+                    setReason(e.target.value);
+                    if (error) setError('');
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Please provide a reason for cancelling this service..."
+                  className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                  rows={3}
+                  maxLength={500}
+                  disabled={isLoading}
+                  readOnly
+                />
+              ) : (
+                <textarea
+                  id="others-reason"
+                  value={othersReason}
+                  onChange={(e) => {
+                    setOthersReason(e.target.value);
+                    if (error) setError('');
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Please enter the specific reason for cancelling this service..."
+                  className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                  rows={3}
+                  maxLength={500}
+                  disabled={isLoading}
+                  required
+                />
+              )}
               
               <div className="flex justify-between items-center mt-1">
                 <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
-                  {reason.length}/500 characters
+                  {showOthersField ? othersReason.length : reason.length}/500 characters
                 </span>
                 {error && (
                   <span className="text-xs text-red-600 dark:text-red-400">
@@ -164,16 +206,20 @@ const CancellationModal: React.FC<CancellationModalProps> = ({
             {/* Quick reason buttons */}
             <div className="mb-4">
               <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark mb-2">
-                Quick reasons (click to use):
+                Quick reasons (click to select):
               </p>
               <div className="flex flex-wrap gap-1">
                 {commonReasons.map((commonReason) => (
                   <button
                     key={commonReason}
                     type="button"
-                    onClick={() => setReason(commonReason)}
+                    onClick={() => handleQuickReasonClick(commonReason)}
                     disabled={isLoading}
-                    className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-text-secondary-light dark:text-text-secondary-dark rounded transition-colors disabled:opacity-50"
+                    className={`px-2 py-1 text-xs rounded transition-colors disabled:opacity-50 ${
+                      (commonReason === 'Others' && showOthersField) || (commonReason !== 'Others' && reason === commonReason)
+                        ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700'
+                        : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-text-secondary-light dark:text-text-secondary-dark'
+                    }`}
                   >
                     {commonReason}
                   </button>
@@ -194,7 +240,7 @@ const CancellationModal: React.FC<CancellationModalProps> = ({
               
               <button
                 type="submit"
-                disabled={isLoading || !reason.trim() || reason.trim().length < 3}
+                disabled={isLoading || (!showOthersField && (!reason.trim() || reason.trim().length < 3)) || (showOthersField && (!othersReason.trim() || othersReason.trim().length < 3))}
                 className="px-4 py-2 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isLoading ? 'Cancelling...' : 'Confirm Cancellation'}
