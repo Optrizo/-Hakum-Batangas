@@ -85,12 +85,12 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
 
   // Dynamic time tracking hooks - these will cause re-renders every minute for active statuses
   const waitingTime = useDynamicTime(vehicle.time_waiting || vehicle.created_at, vehicle.status === 'waiting');
-  const progressTime = useDynamicTime(vehicle.time_in_progress, vehicle.status === 'in-progress');
+  const progressTime = useDynamicTime(vehicle.time_in_progress, vehicle.status === 'in-progress' || vehicle.status === 'payment-pending');
 
   // Force re-render for dynamic time tracking
   const [, forceUpdate] = useState({});
   useEffect(() => {
-    if (vehicle.status === 'waiting' || vehicle.status === 'in-progress') {
+    if (vehicle.status === 'waiting' || vehicle.status === 'in-progress' || vehicle.status === 'payment-pending') {
       const interval = setInterval(() => {
         forceUpdate({}); // Force component re-render for dynamic times
       }, 60000); // Update every minute
@@ -159,6 +159,17 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
             isPrimary: true
           });
         }
+        
+        // Also show Total Service Duration (dynamic)
+        if (vehicle.time_waiting || vehicle.created_at) {
+          const totalDuration = calculateTimeDifference(vehicle.time_waiting || vehicle.created_at);
+          timestampSections.push({
+            label: 'Total Service Duration',
+            value: formatDuration(totalDuration),
+            isDynamic: true,
+            isPrimary: false
+          });
+        }
         break;
         
       case 'in-progress':
@@ -172,32 +183,51 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
             isPrimary: true
           });
         }
+        
+        // Also show Total Service Duration (dynamic)
+        if (vehicle.time_waiting || vehicle.created_at) {
+          const totalDuration = calculateTimeDifference(vehicle.time_waiting || vehicle.created_at);
+          timestampSections.push({
+            label: 'Total Service Duration',
+            value: formatDuration(totalDuration),
+            isDynamic: true,
+            isPrimary: false
+          });
+        }
         break;
         
       case 'payment-pending':
-        // For payment-pending status: Show two static total times
-        if (vehicle.time_waiting && vehicle.time_in_progress) {
+        // For payment-pending status: Show total waiting time (static) and total process time (dynamic)
+        if (vehicle.time_in_progress) {
+          // Total Time in Waiting (static) - from time added to when moved to in-progress
           const waitingDuration = calculateTimeDifference(
             vehicle.time_waiting || vehicle.created_at,
             vehicle.time_in_progress
           );
           timestampSections.push({
-            label: 'Total Waiting Time',
+            label: 'Total Time in Waiting',
             value: formatDuration(waitingDuration),
             isDynamic: false,
             isPrimary: false
           });
-        }
-        
-        if (vehicle.time_in_progress && vehicle.time_ready_for_payment) {
-          const processDuration = calculateTimeDifference(
-            vehicle.time_in_progress,
-            vehicle.time_ready_for_payment
-          );
+          
+          // Total Process Time (dynamic) - from when moved to in-progress to current time
+          const processDuration = calculateTimeDifference(vehicle.time_in_progress);
           timestampSections.push({
             label: 'Total Process Time',
             value: formatDuration(processDuration),
-            isDynamic: false,
+            isDynamic: true,
+            isPrimary: false
+          });
+        }
+        
+        // Also show Total Service Duration (dynamic)
+        if (vehicle.time_waiting || vehicle.created_at) {
+          const totalDuration = calculateTimeDifference(vehicle.time_waiting || vehicle.created_at);
+          timestampSections.push({
+            label: 'Total Service Duration',
+            value: formatDuration(totalDuration),
+            isDynamic: true,
             isPrimary: false
           });
         }
