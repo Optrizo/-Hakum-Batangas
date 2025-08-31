@@ -160,8 +160,9 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
           });
         }
         
-        // Also show Total Service Duration (dynamic)
-        if (vehicle.time_waiting || vehicle.created_at) {
+        // For cars in waiting status, no need to show Total Service Duration
+        // Only show Total Service Duration for motorcycles in waiting status
+        if (isMotorcycle && (vehicle.time_waiting || vehicle.created_at)) {
           const totalDuration = calculateTimeDifference(vehicle.time_waiting || vehicle.created_at);
           timestampSections.push({
             label: 'Total Service Duration',
@@ -221,33 +222,42 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
           });
         }
         
-        // Also show Total Service Duration (dynamic)
-        if (vehicle.time_waiting || vehicle.created_at) {
-          const totalDuration = calculateTimeDifference(vehicle.time_waiting || vehicle.created_at);
-          timestampSections.push({
-            label: 'Total Service Duration',
-            value: formatDuration(totalDuration),
-            isDynamic: true,
-            isPrimary: false
-          });
-        }
+        // No Total Service Duration for payment-pending status
         break;
         
       case 'completed':
-        // For completed status: Show total service duration
-        if (vehicle.completed_at && (vehicle.time_waiting || vehicle.created_at)) {
-          const totalDuration = calculateTimeDifference(
-            vehicle.time_waiting || vehicle.created_at,
-            vehicle.completed_at
-          );
-          timestampSections.push({
-            label: 'Total Service Duration',
-            value: formatDuration(totalDuration),
-            isDynamic: false,
-            isPrimary: true
-          });
-        }
-        break;
+  if (vehicle.completed_at && vehicle.time_in_progress && (vehicle.time_waiting || vehicle.created_at)) {
+    const timeAdded = vehicle.time_waiting || vehicle.created_at;
+
+    // Total Time Waiting = time_in_progress - time_added
+    const waitingDuration = calculateTimeDifference(timeAdded, vehicle.time_in_progress);
+    timestampSections.push({
+      label: 'Total Time Waiting',
+      value: formatDuration(waitingDuration),
+      isDynamic: false,
+      isPrimary: false
+    });
+
+    // Total Process Time = completed_at - time_in_progress
+    const processDuration = calculateTimeDifference(vehicle.time_in_progress, vehicle.completed_at);
+    timestampSections.push({
+      label: 'Total Process Time',
+      value: formatDuration(processDuration),
+      isDynamic: false,
+      isPrimary: false
+    });
+
+    // Total Service Duration = completed_at - time_added
+    const totalDuration = calculateTimeDifference(timeAdded, vehicle.completed_at);
+    timestampSections.push({
+      label: 'Total Service Duration',
+      value: formatDuration(totalDuration),
+      isDynamic: false,
+      isPrimary: true
+    });
+  }
+  break;
+
         
       case 'cancelled':
         // For cancelled status: Show timestamp when cancelled
