@@ -337,6 +337,7 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
         // If package is selected, proceed with in-progress status
       }
       
+      const now = new Date().toISOString();
       const motorcycleData = {
         plate: sanitizeInput(formData.plate).toUpperCase(),
         model: sanitizeInput(formData.model),
@@ -347,7 +348,8 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
         services: formData.selectedServices,
         package: formData.selectedPackages[0] || undefined,
         total_cost: finalCost,
-        vehicle_type: 'motorcycle' as const
+        vehicle_type: 'motorcycle' as const,
+        ...(statusToUse === 'in-progress' ? { time_in_progress: now } : {}),
       };
 
       await addMotorcycle(motorcycleData);

@@ -333,6 +333,7 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
         }
         // If package is selected, proceed with in-progress status
       }
+      const now = new Date().toISOString();
       await addCar({
         plate: formData.plate.toUpperCase().trim(),
         model: formData.model.trim(),
@@ -343,6 +344,7 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
         service: allServiceNames.join(', '),
         services: [...formData.selectedServices, ...formData.selectedPackages],
         total_cost: finalCost, // Allow any value
+        ...(statusToUse === 'in-progress' ? { time_in_progress: now } : {}),
       });
 
       // Calculate queue number if status is waiting

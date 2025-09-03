@@ -27,11 +27,19 @@ interface QueueItemProps {
 
 // Helper function to format duration in hours and minutes
 const formatDuration = (milliseconds: number): string => {
+  // Handle null or undefined values
+  if (milliseconds === null || milliseconds === undefined) {
+    return '0m';
+  }
+  
   const totalMinutes = Math.floor(milliseconds / (1000 * 60));
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   
-  if (hours === 0) {
+  // Always show at least '0m' even when duration is 0
+  if (totalMinutes === 0) {
+    return '0m';
+  } else if (hours === 0) {
     return `${minutes}m`;
   } else if (minutes === 0) {
     return `${hours}h`;
@@ -41,7 +49,12 @@ const formatDuration = (milliseconds: number): string => {
 };
 
 // Helper function to calculate time difference
-const calculateTimeDifference = (startTime: string, endTime: string | null = null): number => {
+const calculateTimeDifference = (startTime: string | null | undefined, endTime: string | null | undefined = null): number => {
+  // Handle null or undefined start time
+  if (!startTime) {
+    return 0;
+  }
+  
   const start = new Date(startTime).getTime();
   const end = endTime ? new Date(endTime).getTime() : Date.now();
   return Math.max(0, end - start);
@@ -85,12 +98,12 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
 
   // Dynamic time tracking hooks - these will cause re-renders every minute for active statuses
   const waitingTime = useDynamicTime(vehicle.time_waiting || vehicle.created_at, vehicle.status === 'waiting');
-  const progressTime = useDynamicTime(vehicle.time_in_progress, vehicle.status === 'in-progress' || vehicle.status === 'payment-pending');
+  const progressTime = useDynamicTime(vehicle.time_in_progress, vehicle.status === 'in-progress');
 
   // Force re-render for dynamic time tracking
   const [, forceUpdate] = useState({});
   useEffect(() => {
-    if (vehicle.status === 'waiting' || vehicle.status === 'in-progress' || vehicle.status === 'payment-pending') {
+    if (vehicle.status === 'waiting' || vehicle.status === 'in-progress') {
       const interval = setInterval(() => {
         forceUpdate({}); // Force component re-render for dynamic times
       }, 60000); // Update every minute
@@ -148,122 +161,122 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
     // Different logic based on vehicle status
     switch (vehicle.status) {
       case 'waiting':
-        // For waiting status: Show dynamic "Time Waiting" counter
-        if (vehicle.time_waiting || vehicle.created_at) {
-          const startTime = vehicle.time_waiting || vehicle.created_at;
-          const duration = calculateTimeDifference(startTime);
-          timestampSections.push({
-            label: 'Time Waiting',
-            value: formatDuration(duration),
-            isDynamic: true,
-            isPrimary: true
-          });
-        }
-        
-        // For cars in waiting status, no need to show Total Service Duration
-        // Only show Total Service Duration for motorcycles in waiting status
-        if (isMotorcycle && (vehicle.time_waiting || vehicle.created_at)) {
-          const totalDuration = calculateTimeDifference(vehicle.time_waiting || vehicle.created_at);
-          timestampSections.push({
-            label: 'Total Service Duration',
-            value: formatDuration(totalDuration),
-            isDynamic: true,
-            isPrimary: false
-          });
-        }
+        // For waiting status: Show dynamic "Time Waiting" counter (Current Time – Time Added)
+        // Always show timestamp even if null
+        const waitingStartTime = vehicle.time_waiting || vehicle.created_at;
+        const waitingDuration = calculateTimeDifference(waitingStartTime);
+        timestampSections.push({
+          label: 'Time Waiting',
+          value: formatDuration(waitingDuration),
+          isDynamic: true,
+          isPrimary: true
+        });
         break;
         
       case 'in-progress':
-        // For in-progress status: Show dynamic "Process Time" counter
-        if (vehicle.time_in_progress) {
-          const duration = calculateTimeDifference(vehicle.time_in_progress);
-          timestampSections.push({
-            label: 'Process Time',
-            value: formatDuration(duration),
-            isDynamic: true,
-            isPrimary: true
-          });
-        }
+        // For in-progress status: Show static "Total Time in Waiting" and dynamic "Process Time"
+        // Always show timestamps even if null
         
-        // Also show Total Service Duration (dynamic)
-        if (vehicle.time_waiting || vehicle.created_at) {
-          const totalDuration = calculateTimeDifference(vehicle.time_waiting || vehicle.created_at);
-          timestampSections.push({
-            label: 'Total Service Duration',
-            value: formatDuration(totalDuration),
-            isDynamic: true,
-            isPrimary: false
-          });
-        }
+        // Total Time in Waiting (static) - from time added to when moved to in-progress
+        const inProgressWaitingDuration = calculateTimeDifference(
+          vehicle.time_waiting || vehicle.created_at,
+          vehicle.time_in_progress || null
+        );
+        timestampSections.push({
+          label: 'Total Waiting Time',
+          value: formatDuration(inProgressWaitingDuration),
+          isDynamic: false,
+          isPrimary: false
+        });
+        
+        // Process Time (dynamic) - from when moved to in-progress to current time
+        const processDuration = calculateTimeDifference(vehicle.time_in_progress);
+        timestampSections.push({
+          label: 'Process Time',
+          value: formatDuration(processDuration),
+          isDynamic: true,
+          isPrimary: true
+        });
         break;
         
       case 'payment-pending':
-        // For payment-pending status: Show total waiting time (static) and total process time (dynamic)
-        if (vehicle.time_in_progress) {
-          // Total Time in Waiting (static) - from time added to when moved to in-progress
-          const waitingDuration = calculateTimeDifference(
-            vehicle.time_waiting || vehicle.created_at,
-            vehicle.time_in_progress
-          );
-          timestampSections.push({
-            label: 'Total Time in Waiting',
-            value: formatDuration(waitingDuration),
-            isDynamic: false,
-            isPrimary: false
-          });
-          
-          // Total Process Time (dynamic) - from when moved to in-progress to current time
-          const processDuration = calculateTimeDifference(vehicle.time_in_progress);
-          timestampSections.push({
-            label: 'Total Process Time',
-            value: formatDuration(processDuration),
-            isDynamic: true,
-            isPrimary: false
-          });
-        }
+        // For payment-pending status: Show static "Total Time in Waiting" and static "Total Process Time"
+        // Always show timestamps even if null
         
-        // No Total Service Duration for payment-pending status
+        // Total Time in Waiting (static) - from time added to when moved to in-progress
+        const paymentWaitingDuration = calculateTimeDifference(
+          vehicle.time_waiting || vehicle.created_at,
+          vehicle.time_in_progress || null
+        );
+        timestampSections.push({
+          label: 'Total Waiting Time',
+          value: formatDuration(paymentWaitingDuration),
+          isDynamic: false,
+          isPrimary: false
+        });
+        
+        // Total Process Time (static) - from when moved to in-progress to payment-pending time
+        // If time_in_progress is null, use created_at as fallback to ensure we always have a start time
+        const processStartTime = vehicle.time_in_progress || vehicle.created_at;
+        const paymentEndTime = vehicle.time_ready_for_payment || null;
+        const paymentProcessDuration = calculateTimeDifference(processStartTime, paymentEndTime);
+        timestampSections.push({
+          label: 'Total Process Time',
+          value: formatDuration(paymentProcessDuration),
+          isDynamic: false,
+          isPrimary: true
+        });
         break;
         
       case 'completed':
-  if (vehicle.completed_at && vehicle.time_in_progress && (vehicle.time_waiting || vehicle.created_at)) {
-    const timeAdded = vehicle.time_waiting || vehicle.created_at;
-
-    // Total Time Waiting = time_in_progress - time_added
-    const waitingDuration = calculateTimeDifference(timeAdded, vehicle.time_in_progress);
-    timestampSections.push({
-      label: 'Total Time Waiting',
-      value: formatDuration(waitingDuration),
-      isDynamic: false,
-      isPrimary: false
-    });
-
-    // Total Process Time = completed_at - time_in_progress
-    const processDuration = calculateTimeDifference(vehicle.time_in_progress, vehicle.completed_at);
-    timestampSections.push({
-      label: 'Total Process Time',
-      value: formatDuration(processDuration),
-      isDynamic: false,
-      isPrimary: false
-    });
-
-    // Total Service Duration = completed_at - time_added
-    const totalDuration = calculateTimeDifference(timeAdded, vehicle.completed_at);
-    timestampSections.push({
-      label: 'Total Service Duration',
-      value: formatDuration(totalDuration),
-      isDynamic: false,
-      isPrimary: true
-    });
-  }
-  break;
-
-        
-      case 'cancelled':
-        // For cancelled status: Show timestamp when cancelled
+        // Always show timestamps even if null
+        // Total Waiting Time (static)
+        const completedWaitingDuration = calculateTimeDifference(vehicle.time_waiting || vehicle.created_at, vehicle.time_in_progress || null);
         timestampSections.push({
-          label: 'Added',
-          timestamp: vehicle.created_at,
+          label: 'Total Waiting Time',
+          value: formatDuration(completedWaitingDuration),
+          isDynamic: false,
+          isPrimary: false
+        });
+
+        // Total Process Time (static)
+        const processStartTimeForCompleted = vehicle.time_in_progress || vehicle.created_at;
+        const completedProcessDuration = calculateTimeDifference(processStartTimeForCompleted, vehicle.completed_at || null);
+        timestampSections.push({
+          label: 'Total Process Time',
+          value: formatDuration(completedProcessDuration),
+          isDynamic: false,
+          isPrimary: false
+        });
+
+        // Total Service Duration (static) - from created_at to completed_at only
+        const totalDuration = calculateTimeDifference(vehicle.created_at, vehicle.completed_at || null);
+        timestampSections.push({
+          label: 'Total Service Duration',
+          value: formatDuration(totalDuration),
+          isDynamic: false,
+          isPrimary: true
+        });
+        break;
+
+      case 'cancelled':
+        // For cancelled status: Show Total Waiting Time and Time Cancelled
+        // Total Waiting Time (static) - from time added to when cancelled
+        const cancelledWaitingDuration = calculateTimeDifference(
+          vehicle.time_waiting || vehicle.created_at,
+          vehicle.updated_at || null
+        );
+        timestampSections.push({
+          label: 'Total Waiting Time',
+          value: formatDuration(cancelledWaitingDuration),
+          isDynamic: false,
+          isPrimary: false
+        });
+        
+        // Time Cancelled (static timestamp)
+        timestampSections.push({
+          label: 'Time Cancelled',
+          timestamp: vehicle.updated_at,
           isDynamic: false,
           isPrimary: true
         });
@@ -698,8 +711,8 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
                     section.isDynamic ? 'font-medium text-blue-600 dark:text-blue-400' : ''
                   }`}>
                     {section.value ? (
-                      // Display duration value (e.g., "1h 25m")
-                      section.value
+                      // Display duration value (e.g., "1h 25m") - always show even if '0m'
+                      section.value || '0m'
                     ) : section.timestamp ? (
                       // Display formatted timestamp
                       new Date(section.timestamp).toLocaleString(undefined, { 

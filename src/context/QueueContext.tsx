@@ -246,24 +246,38 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       addActiveOperation(operationId);
-      
+
+      // Patch: Ensure timestamps are set for status transitions
+      let patchedUpdates = { ...updates };
+      // Fetch current car for reference
+      const currentCar = cars.find(c => c.id === id);
+      if (updates.status === 'in-progress' && (!currentCar?.time_in_progress && !updates.time_in_progress)) {
+        patchedUpdates.time_in_progress = new Date().toISOString();
+      }
+      if (updates.status === 'completed' && (!currentCar?.completed_at && !updates.completed_at)) {
+        patchedUpdates.completed_at = new Date().toISOString();
+      }
+      if (updates.status === 'waiting' && (!currentCar?.time_waiting && !updates.time_waiting)) {
+        patchedUpdates.time_waiting = new Date().toISOString();
+      }
+
       // Use enhanced loading state management for completion operations
       const operationType = updates.status === 'completed' ? 'completion' : 'status_update';
-      
+
       await executeWithLoadingState(
         loadingState,
         operationId,
         async () => {
           const result = await supabase
             .from('cars')
-            .update({ ...updates, updated_at: new Date().toISOString() })
+            .update({ ...patchedUpdates, updated_at: new Date().toISOString() })
             .eq('id', id);
-          
+
           if (result.error) {
             console.error('Supabase error updating car:', result.error);
             throw new Error(`Failed to update vehicle: ${result.error.message}`);
           }
-          
+
           return result;
         },
         {
@@ -283,9 +297,9 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         }
       );
-      
+
       // Optimistically update local state
-      setCars(prev => prev.map(c => c.id === id ? { ...c, ...updates, updated_at: new Date().toISOString() } : c));
+      setCars(prev => prev.map(c => c.id === id ? { ...c, ...patchedUpdates, updated_at: new Date().toISOString() } : c));
     } catch (err) {
       console.error('Error in updateCar:', err);
       throw err;
@@ -300,23 +314,37 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       addActiveOperation(operationId);
-      
+
+      // Patch: Ensure timestamps are set for status transitions
+      let patchedUpdates = { ...updates };
+      // Fetch current motorcycle for reference
+      const currentMotorcycle = motorcycles.find(m => m.id === id);
+      if (updates.status === 'in-progress' && (!currentMotorcycle?.time_in_progress && !updates.time_in_progress)) {
+        patchedUpdates.time_in_progress = new Date().toISOString();
+      }
+      if (updates.status === 'completed' && (!currentMotorcycle?.completed_at && !updates.completed_at)) {
+        patchedUpdates.completed_at = new Date().toISOString();
+      }
+      if (updates.status === 'waiting' && (!currentMotorcycle?.time_waiting && !updates.time_waiting)) {
+        patchedUpdates.time_waiting = new Date().toISOString();
+      }
+
       const operationType = updates.status === 'completed' ? 'completion' : 'status_update';
-      
+
       await executeWithLoadingState(
         loadingState,
         operationId,
         async () => {
           const result = await supabase
             .from('motorcycles')
-            .update({ ...updates, updated_at: new Date().toISOString() })
+            .update({ ...patchedUpdates, updated_at: new Date().toISOString() })
             .eq('id', id);
-          
+
           if (result.error) {
             console.error('Supabase error updating motorcycle:', result.error);
             throw new Error(`Failed to update motorcycle: ${result.error.message}`);
           }
-          
+
           return result;
         },
         {
@@ -336,9 +364,9 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         }
       );
-      
+
       // Optimistically update local state
-      setMotorcycles(prev => prev.map(m => m.id === id ? { ...m, ...updates, updated_at: new Date().toISOString() } as Motor : m));
+      setMotorcycles(prev => prev.map(m => m.id === id ? { ...m, ...patchedUpdates, updated_at: new Date().toISOString() } : m));
     } catch (err) {
       console.error('Error in updateMotorcycle:', err);
       throw err;
