@@ -7,7 +7,11 @@ import {
   validatePhoneNumber,
   validateCost,
   validateCarSize,
-  validateServiceStatus
+  validateServiceStatus,
+  validateCrewForStatus,
+  validateCrewAvailability,
+  shouldEnableCrewSelection,
+  isCrewSelectionRequired
 } from '../lib/validation';
 
 interface EditCarFormProps {
@@ -156,15 +160,17 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
       newErrors.total_cost = 'Total cost must be at least 1.';
     }
 
-    if (formData.status === 'in-progress' && formData.crew.length === 0) {
-      newErrors.crew = 'Assign at least one crew member for cars "In Progress".';
+    // Crew validation using new validation functions
+    const crewValidation = validateCrewForStatus(formData.status, formData.crew, hasPackageSelected);
+    if (!crewValidation.isValid) {
+      newErrors.crew = crewValidation.error!;
     }
 
-    // Enhanced crew validation - check if assigned crew are busy
-    if (formData.status === 'in-progress' && formData.crew.length > 0) {
-      const assignedCrewAreBusy = formData.crew.some(crewId => busyCrewIds.has(crewId));
-      if (assignedCrewAreBusy) {
-        newErrors.crew = 'Some assigned crew members are currently busy. Please select different crew members.';
+    // Crew availability validation if crew is selected
+    if (formData.crew.length > 0) {
+      const availabilityValidation = validateCrewAvailability(formData.crew, busyCrewIds);
+      if (!availabilityValidation.isValid) {
+        newErrors.crew = availabilityValidation.error!;
       }
     }
 
@@ -589,26 +595,44 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
           </div>
         </div>
 
-      {formData.status === 'in-progress' && (
+      {/* Crew Selection - Show when enabled for status */}
+      {shouldEnableCrewSelection(formData.status) && (
         <div className="mb-6">
-          <label className="block text-lg font-bold mb-2 text-gray-800 dark:text-white">Assign Crew</label>
-          <div className="p-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
+          <label className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-2">
+            Assign Crew {isCrewSelectionRequired(formData.status, hasPackageSelected) && <span className="text-red-500">*</span>}
+            {!isCrewSelectionRequired(formData.status, hasPackageSelected) && <span className="text-gray-500 text-xs">(Optional)</span>}
+          </label>
+          {formData.status === 'in-progress' && !hasPackageSelected && (
+            <p className="mb-2 text-xs text-orange-600 dark:text-orange-400">
+              <strong>Required:</strong> At least one crew member must be assigned for "In Progress" status.
+            </p>
+          )}
+          {formData.status === 'waiting' && (
+            <p className="mb-2 text-xs text-blue-600 dark:text-blue-400">
+              <strong>Note:</strong> For vehicles in waiting queue, crew can be assigned via "Start Service" button.
+            </p>
+          )}
+          <div className="p-4 bg-background-light dark:bg-gray-900/50 rounded-lg border border-border-light dark:border-border-dark">
             <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsCrewOpen(!isCrewOpen)}>
-              <span className="font-medium text-gray-700 dark:text-gray-200 text-sm sm:text-base">
+              <span className="font-medium text-text-primary-light dark:text-text-primary-dark text-sm sm:text-base">
                 {formData.crew.length > 0
                   ? formData.crew.map(id => crews.find(c => c.id === id)?.name).join(', ')
                   : 'Select Crew...'}
               </span>
-              <svg className={`w-5 h-5 text-gray-500 transition-transform ${isCrewOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              <svg className={`w-5 h-5 text-text-secondary-light dark:text-text-secondary-dark transition-transform ${isCrewOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
             {isCrewOpen && (
-              <div className="mt-4 space-y-2 sm:space-y-3">
+              <div className="mt-4 space-y-2 sm:space-y-3 max-h-40 overflow-y-auto pr-2">
                 {crews.map((crewMember) => {
                   const isBusy = busyCrewIds.has(crewMember.id);
                   return (
                     <label 
                       key={crewMember.id} 
-                      className={`flex items-center justify-between p-2 sm:p-3 rounded-lg transition-colors ${isBusy ? 'cursor-not-allowed bg-gray-200 dark:bg-gray-600 opacity-70' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                      className={`flex items-center justify-between p-2 sm:p-3 rounded-lg transition-colors ${
+                        isBusy 
+                          ? 'cursor-not-allowed bg-gray-100 dark:bg-gray-800 opacity-50' 
+                          : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
                     >
                       <div className="flex items-center min-w-0 flex-1">
                         <input
@@ -616,12 +640,12 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
                           checked={formData.crew.includes(crewMember.id)}
                           onChange={() => !isBusy && handleCrewToggle(crewMember.id)}
                           disabled={isBusy}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-brand-blue focus:ring-brand-blue flex-shrink-0"
                         />
-                        <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200 truncate">{crewMember.name}</span>
+                        <span className="ml-3 text-sm font-medium text-text-primary-light dark:text-text-primary-dark truncate">{crewMember.name}</span>
                       </div>
                       {isBusy && (
-                        <span className="text-xs font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full flex-shrink-0 ml-2">Busy</span>
+                        <span className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/50 px-2 py-1 rounded-full flex-shrink-0 ml-2">Busy</span>
                       )}
                     </label>
                   );
@@ -629,7 +653,14 @@ const EditCarForm: React.FC<EditCarFormProps> = ({ car, onComplete }) => {
               </div>
             )}
           </div>
-          {errors.crew && <p className="text-red-500 text-sm mt-2">{errors.crew}</p>}
+          {errors.crew && (
+            <p className="mt-2 text-xs text-red-500 flex items-center">
+              <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              {errors.crew}
+            </p>
+          )}
         </div>
       )}
       

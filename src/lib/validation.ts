@@ -227,6 +227,61 @@ export const validateUUID = (id: string): ValidationResult => {
   return { isValid: true };
 };
 
+// Crew validation for different statuses
+export const validateCrewForStatus = (status: string, crew: string[], hasPackage: boolean = false): ValidationResult => {
+  if (!status || typeof status !== 'string') {
+    return { isValid: false, error: 'Status is required for crew validation' };
+  }
+
+  if (!Array.isArray(crew)) {
+    return { isValid: false, error: 'Crew must be an array' };
+  }
+
+  // For 'in-progress' status, crew is required unless a package is selected
+  if (status === 'in-progress') {
+    if (!hasPackage && crew.length === 0) {
+      return { isValid: false, error: 'At least one crew member must be assigned when status is "In Progress" and no package is selected.' };
+    }
+  }
+
+  // For 'waiting' status, crew assignment is optional
+  // For other statuses, crew validation is not enforced
+
+  return { isValid: true };
+};
+
+// Validate crew assignment based on busy status
+export const validateCrewAvailability = (selectedCrewIds: string[], busyCrewIds: Set<string>): ValidationResult => {
+  if (!Array.isArray(selectedCrewIds)) {
+    return { isValid: false, error: 'Selected crew must be an array' };
+  }
+
+  if (!(busyCrewIds instanceof Set)) {
+    return { isValid: false, error: 'Busy crew IDs must be a Set' };
+  }
+
+  const busySelectedCrew = selectedCrewIds.filter(crewId => busyCrewIds.has(crewId));
+  
+  if (busySelectedCrew.length > 0) {
+    return { isValid: false, error: 'Some selected crew members are currently busy. Please select different crew members.' };
+  }
+
+  return { isValid: true };
+};
+
+// Check if crew selection should be enabled based on status
+export const shouldEnableCrewSelection = (status: string): boolean => {
+  // Crew selection is enabled for 'in-progress' status
+  // Disabled for 'waiting' status in add/edit forms (only via Start Service)
+  return status === 'in-progress';
+};
+
+// Check if crew selection should be required based on status and package
+export const isCrewSelectionRequired = (status: string, hasPackage: boolean = false): boolean => {
+  // Crew is required for 'in-progress' status unless a package is selected
+  return status === 'in-progress' && !hasPackage;
+};
+
 // Rate limiting helper
 export class RateLimiter {
   private attempts: Map<string, { count: number; resetTime: number }> = new Map();

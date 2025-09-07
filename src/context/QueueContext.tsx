@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Car, Motor, Service, CrewMember, ServicePackage } from '../types';
 import { supabase } from '../lib/supabase';
-import { validateLicensePlate, validateMotorcyclePlate, validateMotorcycleModel, validatePhoneNumber, validateCost, validateMotorcycleSize, validateServiceStatus } from '../lib/validation';
+import { validateLicensePlate, validateMotorcyclePlate, validateMotorcycleModel, validatePhoneNumber, validateCost, validateMotorcycleSize, validateServiceStatus, validateCrewForStatus, validateCrewAvailability } from '../lib/validation';
 import { useLoadingState, executeWithLoadingState } from '../hooks/useLoadingState';
 
 interface QueueContextType {
@@ -239,6 +239,67 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, [fetchCars, fetchMotorcycles, fetchServices, fetchCrews, fetchPackages]);
 
+  // Helper function to get busy crew IDs for validation
+  const getBusyCrewIds = useCallback((): Set<string> => {
+    const today = new Date();
+    const isToday = (dateString: string) => {
+      if (!dateString) return false;
+      const date = new Date(dateString);
+      return date.getDate() === today.getDate() &&
+             date.getMonth() === today.getMonth() &&
+             date.getFullYear() === today.getFullYear();
+    };
+
+    const busyIds = new Set<string>();
+    const allVehicles = [...cars, ...motorcycles];
+    allVehicles.forEach(v => {
+      if (v.status === 'in-progress' && isToday(v.created_at)) {
+        v.crew?.forEach(crewId => busyIds.add(crewId));
+      }
+    });
+    return busyIds;
+  }, [cars, motorcycles]);
+
+  // Server-side validation for crew requirements
+  const validateVehicleUpdate = useCallback((updates: Partial<Car> | Partial<Motor>, vehicleId?: string): void => {
+    // Only validate if status or crew is being updated
+    if (!updates.status && !updates.crew) {
+      return;
+    }
+
+    const status = updates.status;
+    const crew = updates.crew || [];
+    
+    // Check if vehicle has packages (simplified check - in real implementation you'd need more context)
+    const hasPackage = false; // This would need to be passed as parameter in real implementation
+
+    // Validate crew requirements for status
+    if (status) {
+      const crewValidation = validateCrewForStatus(status, crew, hasPackage);
+      if (!crewValidation.isValid) {
+        throw new Error(crewValidation.error!);
+      }
+    }
+
+    // Validate crew availability
+    if (crew.length > 0) {
+      const busyCrewIds = getBusyCrewIds();
+      
+      // Exclude current vehicle from busy check if editing
+      if (vehicleId) {
+        const currentVehicle = [...cars, ...motorcycles].find(v => v.id === vehicleId);
+        if (currentVehicle?.crew) {
+          currentVehicle.crew.forEach(crewId => busyCrewIds.delete(crewId));
+        }
+      }
+      
+      const availabilityValidation = validateCrewAvailability(crew, busyCrewIds);
+      if (!availabilityValidation.isValid) {
+        throw new Error(availabilityValidation.error!);
+      }
+    }
+  }, [cars, motorcycles, getBusyCrewIds]);
+
   // Update functions with enhanced loading states
   const updateCar = async (id: string, updates: Partial<Car>) => {
     const operationId = `car-update-${id}`;
@@ -246,6 +307,9 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       addActiveOperation(operationId);
+
+      // Server-side validation for crew requirements
+      validateVehicleUpdate(updates, id);
 
       // Patch: Ensure timestamps are set for status transitions
       let patchedUpdates = { ...updates };
@@ -315,6 +379,9 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       addActiveOperation(operationId);
 
+      // Server-side validation for crew requirements
+      validateVehicleUpdate(updates, id);
+
       // Patch: Ensure timestamps are set for status transitions
       let patchedUpdates = { ...updates };
       // Fetch current motorcycle for reference
@@ -383,6 +450,9 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Essential CRUD operations
   const addCar = async (car: Omit<Car, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      // Server-side validation for crew requirements
+      validateVehicleUpdate(car);
+      
       const { data, error } = await supabase
         .from('cars')
         .insert([{ ...car }])
@@ -429,6 +499,9 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addMotorcycle = async (motorcycle: Omit<Motor, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      // Server-side validation for crew requirements
+      validateVehicleUpdate(motorcycle);
+      
       const motorcyclePayload = {
         ...motorcycle,
         vehicle_type: 'motorcycle'

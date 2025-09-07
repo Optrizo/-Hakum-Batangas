@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueue } from '../context/QueueContext';
 import { CAR_SIZES, CarSize, ServiceStatus, SizePricing } from '../types';
+import { validateCrewForStatus, validateCrewAvailability, shouldEnableCrewSelection, isCrewSelectionRequired } from '../lib/validation';
 
 interface AddCarFormProps {
   onComplete: () => void;
@@ -193,9 +194,18 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
       newErrors.status = 'Please select a valid status';
     }
 
-    // Crew validation for "in-progress" when no package is selected
-    if (formData.status === 'in-progress' && (!formData.crew || formData.crew.length === 0) && !hasPackageSelected) {
-      newErrors.crew = 'Assign at least one crew member when status is "In Progress" and no package is selected.';
+    // Crew validation for in-progress status
+    const crewValidation = validateCrewForStatus(formData.status, formData.crew, hasPackageSelected);
+    if (!crewValidation.isValid) {
+      newErrors.crew = crewValidation.error!;
+    }
+
+    // Crew availability validation if crew is selected
+    if (formData.crew.length > 0) {
+      const availabilityValidation = validateCrewAvailability(formData.crew, busyCrewIds);
+      if (!availabilityValidation.isValid) {
+        newErrors.crew = availabilityValidation.error!;
+      }
     }
 
     // Service/Package selection validation
@@ -258,7 +268,7 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
     setFormData(prev => ({
       ...prev,
       selectedPackages: newSelectedPackages,
-      // If a package is now selected, clear the crew. Otherwise, keep existing crew.
+      // Clear crew if packages are selected (packages don't require crew)
       crew: newSelectedPackages.length > 0 ? [] : prev.crew,
     }));
   };
@@ -697,15 +707,26 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
               </p>
             </div>
 
-            {/* Assign Crew - Hide if a package is selected */}
-            {!hasPackageSelected && (
+            {/* Assign Crew - Show when enabled for status */}
+            {shouldEnableCrewSelection(formData.status) && (
               <div className={`p-4 rounded-lg border ${errors.crew ? 'border-red-400 dark:border-red-600' : 'border-border-light dark:border-border-dark'} bg-background-light dark:bg-gray-900/50`}>
                 <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsCrewOpen(!isCrewOpen)}>
                   <span className="font-medium text-text-primary-light dark:text-text-primary-dark">
-                    Assign Crew <span className="text-gray-500 text-xs">(Optional)</span>
+                    Assign Crew {isCrewSelectionRequired(formData.status, hasPackageSelected) && <span className="text-red-500">*</span>} 
+                    {!isCrewSelectionRequired(formData.status, hasPackageSelected) && <span className="text-gray-500 text-xs">(Optional)</span>}
                   </span>
                   <svg className={`w-5 h-5 transition-transform ${isCrewOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
+                {formData.status === 'in-progress' && !hasPackageSelected && (
+                  <p className="mt-1 text-xs text-orange-600 dark:text-orange-400">
+                    <strong>Required:</strong> At least one crew member must be assigned for "In Progress" status.
+                  </p>
+                )}
+                {formData.status === 'waiting' && (
+                  <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                    <strong>Note:</strong> For vehicles in waiting queue, crew can be assigned via "Start Service" button.
+                  </p>
+                )}
                 {isCrewOpen && (
                   <div className="mt-2 space-y-2 max-h-40 overflow-y-auto pr-2">
                     {crews.map((crewMember) => {
