@@ -330,19 +330,15 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
   };
 
   const handleStartServiceClick = () => {
-    // If the vehicle has a package, start the service immediately without a crew check.
-    if (hasPackage) {
-      handleQuickAction('in-progress');
+    // For waiting vehicles, always show crew assignment first
+    if (vehicle.status === 'waiting') {
+      setShowCrewWarning(true);
+      setIsAssigningCrew(true);
       return;
     }
 
-    // If no package, check for crew before starting.
-    if ((!vehicle.crew || vehicle.crew.length === 0)) {
-      setShowCrewWarning(true);
-      setIsAssigningCrew(true);
-    } else {
-      handleQuickAction('in-progress');
-    }
+    // For other statuses, proceed with the action
+    handleQuickAction('in-progress');
   };
 
   const handleQuickAction = async (newStatus: Car['status']) => {
@@ -756,16 +752,16 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
             <p className="text-sm text-red-700 dark:text-red-300">{vehicle.cancellation_reason}</p>
           </div>
         )}
-        {isAssigningCrew && vehicle.status !== 'completed' && (
+        {isAssigningCrew && vehicle.status === 'waiting' && (
               <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-background-light dark:bg-black/50 rounded-lg border border-border-light dark:border-border-dark">
                 <div className="flex flex-col space-y-3">
                   <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
                 Select Crew Members
               </label>
                   {showCrewWarning && (
-                    <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-md">
-                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                        <strong>Action Required:</strong> Please assign at least one crew member before starting the service.
+                    <div className="p-3 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-md">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        <strong>Ready to Start Service:</strong> Please assign crew members to begin the service.
                       </p>
                     </div>
                   )}
@@ -808,7 +804,7 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
                       className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-brand-blue hover:bg-brand-dark-blue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-light dark:focus:ring-offset-surface-dark focus:ring-brand-blue transition-colors"
                   disabled={isUpdating}
                 >
-                  {isUpdating ? 'Saving...' : 'Save'}
+                  {isUpdating ? 'Starting Service...' : 'Start Service'}
                 </button>
               </div>
             </div>
@@ -886,19 +882,6 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
                     <Edit2 className="h-4 w-4 text-gray-500" />
                   </button>
                 )}
-            <button
-                  onClick={() => setIsAssigningCrew(!isAssigningCrew)}
-                  className={`inline-flex items-center p-1.5 sm:p-2 border shadow-sm text-xs font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue transition-colors ${
-                    isAssigningCrew 
-                      ? 'bg-brand-blue text-white border-transparent' 
-                      : 'bg-surface-light dark:bg-gray-700 text-text-secondary-light dark:text-text-secondary-dark border-border-light dark:border-border-dark hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }`}
-              disabled={isUpdating}
-                  title="Assign Crew"
-            >
-                  <Users className="h-4 w-4" />
-                  <span className="sr-only">Assign Crew</span>
-            </button>
 
           </div>
         </div>
