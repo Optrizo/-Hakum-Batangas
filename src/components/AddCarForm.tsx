@@ -350,7 +350,8 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onComplete }) => {
         size: formData.size,
         status: statusToUse,
         phone: formData.phone.trim() || '',
-        crew: formData.crew,
+        // If waiting, ensure crew is cleared
+        crew: statusToUse === 'waiting' ? [] : formData.crew,
         service: allServiceNames.join(', '),
         services: [...formData.selectedServices, ...formData.selectedPackages],
         total_cost: finalCost, // Allow any value

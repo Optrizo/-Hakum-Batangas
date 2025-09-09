@@ -357,7 +357,8 @@ const AddMotorcycleForm: React.FC<AddMotorcycleFormProps> = ({ onComplete }) => 
         size: formData.size,
         status: statusToUse,
         phone: sanitizeInput(formData.phone.trim()),
-        crew: formData.crew,
+        // If waiting, ensure crew is cleared
+        crew: statusToUse === 'waiting' ? [] : formData.crew,
         services: formData.selectedServices,
         package: formData.selectedPackages[0] || undefined,
         total_cost: finalCost,

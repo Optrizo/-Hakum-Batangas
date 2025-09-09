@@ -260,6 +260,40 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return busyIds;
   }, [cars, motorcycles]);
 
+  // Helper: determine if a vehicle has a package selected (based on current state and incoming updates)
+  const hasPackageForVehicle = useCallback((vehicleId?: string, updates?: Partial<Car> | Partial<Motor>): boolean => {
+    try {
+      const packageIds = new Set<string>((packages || []).map(p => p.id));
+
+      // Prefer updates.services if provided, else fall back to current vehicle services
+      let servicesForCheck: string[] | undefined;
+      let motorcyclePackageField: string | undefined;
+
+      if (vehicleId) {
+        const currentVehicle = [...cars, ...motorcycles].find(v => v.id === vehicleId);
+        if (currentVehicle) {
+          servicesForCheck = (updates && 'services' in updates && updates.services) ? updates.services as string[] : currentVehicle.services;
+          if ('vehicle_type' in (currentVehicle as any) && (currentVehicle as any).vehicle_type === 'motorcycle') {
+            motorcyclePackageField = (updates as any)?.package ?? (currentVehicle as any).package;
+          }
+        }
+      } else if (updates) {
+        if ('services' in updates) servicesForCheck = updates.services as string[] | undefined;
+        motorcyclePackageField = (updates as any)?.package;
+      }
+
+      // Motorcycle explicit package field wins
+      if (motorcyclePackageField && String(motorcyclePackageField).trim() !== '') return true;
+
+      if (servicesForCheck && servicesForCheck.length > 0) {
+        return servicesForCheck.some(id => packageIds.has(id));
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }, [cars, motorcycles, packages]);
+
   // Server-side validation for crew requirements
   const validateVehicleUpdate = useCallback((updates: Partial<Car> | Partial<Motor>, vehicleId?: string): void => {
     // Only validate if status or crew is being updated
@@ -269,9 +303,9 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const status = updates.status;
     const crew = updates.crew || [];
-    
-    // Check if vehicle has packages (simplified check - in real implementation you'd need more context)
-    const hasPackage = false; // This would need to be passed as parameter in real implementation
+
+    // Determine if the vehicle has a package selected
+    const hasPackage = hasPackageForVehicle(vehicleId, updates);
 
     // Validate crew requirements for status
     if (status) {
@@ -323,6 +357,11 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       if (updates.status === 'waiting' && (!currentCar?.time_waiting && !updates.time_waiting)) {
         patchedUpdates.time_waiting = new Date().toISOString();
+      }
+
+      // Business rule: if status is set to waiting, clear any assigned crew
+      if (updates.status === 'waiting') {
+        (patchedUpdates as any).crew = [];
       }
 
       // Use enhanced loading state management for completion operations
@@ -394,6 +433,11 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       if (updates.status === 'waiting' && (!currentMotorcycle?.time_waiting && !updates.time_waiting)) {
         patchedUpdates.time_waiting = new Date().toISOString();
+      }
+
+      // Business rule: if status is set to waiting, clear any assigned crew
+      if (updates.status === 'waiting') {
+        (patchedUpdates as any).crew = [];
       }
 
       const operationType = updates.status === 'completed' ? 'completion' : 'status_update';

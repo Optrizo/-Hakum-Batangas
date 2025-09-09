@@ -330,14 +330,20 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
   };
 
   const handleStartServiceClick = () => {
-    // For waiting vehicles, always show crew assignment first
+    // If vehicle has a package, skip crew requirement and start immediately
+    if (hasPackage) {
+      handleQuickAction('in-progress');
+      return;
+    }
+
+    // For waiting vehicles without package, show crew assignment first
     if (vehicle.status === 'waiting') {
       setShowCrewWarning(true);
       setIsAssigningCrew(true);
       return;
     }
 
-    // For other statuses, proceed with the action
+    // Fallback for other cases
     handleQuickAction('in-progress');
   };
 
@@ -363,6 +369,21 @@ const QueueItem: React.FC<QueueItemProps> = ({ vehicle, countCrewAsBusy = true, 
         } else {
           await updateCar(vehicle.id, updates);
         }
+      } else if (newStatus === 'waiting') {
+        // Ensure crew is cleared when moving back to waiting
+        const updates = {
+          status: newStatus,
+          crew: [] as string[],
+          updated_at: new Date().toISOString(),
+        };
+        if (isMotorcycle) {
+          await updateMotorcycle(vehicle.id, updates);
+        } else {
+          await updateCar(vehicle.id, updates);
+        }
+        setSelectedCrewIds([]);
+        setIsAssigningCrew(false);
+        setShowCrewWarning(false);
       }
       
       // Prepare the service type information
